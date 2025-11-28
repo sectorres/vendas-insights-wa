@@ -32,8 +32,8 @@ export const DailySalesCard = () => {
       if (error) throw error;
 
       if (data && data.content) {
-        // Filtrar apenas vendas do dia específico
-        const todaySales = data.content.filter((sale: any) => sale.data === formattedDate);
+        // Filtrar apenas vendas do dia específico usando dataVenda
+        const todaySales = data.content.filter((sale: any) => sale.dataVenda === formattedDate);
         const total = todaySales.reduce((sum: number, sale: any) => {
           return sum + (sale.valorProdutos || 0);
         }, 0);

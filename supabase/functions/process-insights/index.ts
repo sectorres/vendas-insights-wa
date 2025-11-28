@@ -88,12 +88,12 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
   const day = targetDate.substring(6, 8);
   const formattedTargetDate = `${day}/${month}/${year}`;
   
-  console.log(`Filtering sales for date: ${formattedTargetDate}`);
+  console.log(`Filtering sales for dataVenda: ${formattedTargetDate}`);
 
   salesData.forEach(sale => {
-    const saleDate = sale.data;
+    const saleDate = (sale as any).dataVenda || sale.data;
     
-    // Filtrar apenas vendas do dia específico
+    // Filtrar apenas vendas do dia específico usando dataVenda
     if (saleDate !== formattedTargetDate) {
       return;
     }
