@@ -95,7 +95,11 @@ export const InsightsPreview = () => {
     try {
       const phoneNumbersArray = formData.testPhoneNumbers
         .split(",")
-        .map(p => p.trim())
+        .map(p => {
+          const trimmed = p.trim();
+          // Adicionar 55 automaticamente se não começar com ele
+          return trimmed.startsWith('55') ? trimmed : '55' + trimmed;
+        })
         .filter(p => p);
 
       // Formatar mensagem com os insights
@@ -231,13 +235,16 @@ export const InsightsPreview = () => {
           <div className="border-t border-border pt-6 mt-6 space-y-4">
             <h3 className="font-semibold text-foreground mb-4">Enviar Notificação de Teste</h3>
             <div>
-              <Label htmlFor="testPhoneNumbers">Números WhatsApp (com DDI, separados por vírgula)</Label>
+              <Label htmlFor="testPhoneNumbers">Números WhatsApp (separados por vírgula)</Label>
               <Input
                 id="testPhoneNumbers"
                 value={formData.testPhoneNumbers}
                 onChange={(e) => setFormData({ ...formData, testPhoneNumbers: e.target.value })}
-                placeholder="5511999999999, 5511888888888"
+                placeholder="11999999999, 11888888888"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Digite DDD + número (o código 55 será adicionado automaticamente)
+              </p>
             </div>
             <Button onClick={sendTestNotification} disabled={loading} variant="secondary" className="w-full">
               {loading ? "Enviando..." : "Enviar Notificação de Teste"}
