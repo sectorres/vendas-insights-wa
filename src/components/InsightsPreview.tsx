@@ -37,10 +37,19 @@ export const InsightsPreview = () => {
         .map(c => c.trim())
         .filter(c => c);
 
+      // Para relatórios diários, usar apenas a data final (dia corrente)
+      let dataInicial = formData.dataInicial.replace(/-/g, "");
+      let dataFinal = formData.dataFinal.replace(/-/g, "");
+      
+      if (formData.reportType === "daily_sales") {
+        // Forçar ambas as datas serem iguais ao dia selecionado em dataFinal
+        dataInicial = dataFinal;
+      }
+
       const { data, error } = await supabase.functions.invoke("process-insights", {
         body: {
-          dataInicial: formData.dataInicial.replace(/-/g, ""),
-          dataFinal: formData.dataFinal.replace(/-/g, ""),
+          dataInicial,
+          dataFinal,
           reportType: formData.reportType,
           empresasOrigem: empresasOrigemArray.length > 0 ? empresasOrigemArray : undefined,
         },
