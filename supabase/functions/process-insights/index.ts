@@ -57,7 +57,7 @@ serve(async (req) => {
     let insights: any = {};
 
     if (reportType === 'daily_sales') {
-      insights = processDailySales(salesData);
+      insights = processDailySales(salesData, dataInicial);
     } else if (reportType === 'monthly_sales') {
       insights = processMonthlySales(salesData);
     } else if (reportType === 'sales_by_type') {
@@ -79,25 +79,41 @@ serve(async (req) => {
   }
 });
 
-function processDailySales(salesData: SalesData[]) {
+function processDailySales(salesData: SalesData[], targetDate: string) {
   const salesByStoreAndDate: { [key: string]: { [date: string]: number } } = {};
+  
+  // Converter targetDate de YYYYMMDD para DD/MM/YYYY para comparação
+  const year = targetDate.substring(0, 4);
+  const month = targetDate.substring(4, 6);
+  const day = targetDate.substring(6, 8);
+  const formattedTargetDate = `${day}/${month}/${year}`;
+  
+  console.log(`Filtering sales for date: ${formattedTargetDate}`);
 
   salesData.forEach(sale => {
+    const saleDate = sale.data;
+    
+    // Filtrar apenas vendas do dia específico
+    if (saleDate !== formattedTargetDate) {
+      return;
+    }
+    
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
-    const date = sale.data;
     const valueWithoutFreight = sale.valorProdutos;
 
     if (!salesByStoreAndDate[storeName]) {
       salesByStoreAndDate[storeName] = {};
     }
 
-    if (!salesByStoreAndDate[storeName][date]) {
-      salesByStoreAndDate[storeName][date] = 0;
+    if (!salesByStoreAndDate[storeName][saleDate]) {
+      salesByStoreAndDate[storeName][saleDate] = 0;
     }
 
-    salesByStoreAndDate[storeName][date] += valueWithoutFreight;
+    salesByStoreAndDate[storeName][saleDate] += valueWithoutFreight;
   });
+  
+  console.log(`Filtered ${Object.keys(salesByStoreAndDate).length} stores with sales on ${formattedTargetDate}`);
 
   return {
     type: 'daily_sales',
