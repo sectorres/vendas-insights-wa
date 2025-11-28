@@ -19,7 +19,9 @@ serve(async (req) => {
   try {
     const { phoneNumbers, message } = await req.json() as WhatsAppRequest;
 
-    console.log('Sending WhatsApp notification to:', phoneNumbers);
+    console.log('Received WhatsApp notification request');
+    console.log('Phone numbers:', phoneNumbers);
+    console.log('Message preview:', message.substring(0, 100));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -42,6 +44,7 @@ serve(async (req) => {
     // Enviar para todos os números
     const results = await Promise.allSettled(
       phoneNumbers.map(async (phoneNumber) => {
+        console.log(`Sending to ${phoneNumber}...`);
         const response = await fetch(`${evolutionApiUrl}/message/sendText/${settings.instance_name}`, {
           method: 'POST',
           headers: {
@@ -59,10 +62,12 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Evolution API Error for ${phoneNumber}:`, response.status, errorText);
-          throw new Error(`Failed for ${phoneNumber}: ${response.status}`);
+          throw new Error(`Failed for ${phoneNumber}: ${response.status} - ${errorText}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        console.log(`Successfully sent to ${phoneNumber}:`, result);
+        return result;
       })
     );
 
