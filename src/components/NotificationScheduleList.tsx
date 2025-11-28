@@ -12,7 +12,7 @@ interface Schedule {
   name: string;
   report_type: string;
   schedule_time: string;
-  phone_number: string;
+  phone_numbers: string[];
   empresas_origem: string[] | null;
   active: boolean;
   created_at: string;
@@ -144,7 +144,10 @@ export const NotificationScheduleList = ({ refresh }: { refresh: number }) => {
                   <Clock className="h-4 w-4" />
                   {schedule.schedule_time} - {getReportTypeName(schedule.report_type)}
                 </p>
-                <p>WhatsApp: {schedule.phone_number}</p>
+                <p>
+                  WhatsApp: {schedule.phone_numbers.length} número{schedule.phone_numbers.length > 1 ? 's' : ''}
+                  {schedule.phone_numbers.length <= 2 && ` (${schedule.phone_numbers.join(', ')})`}
+                </p>
                 {schedule.empresas_origem && schedule.empresas_origem.length > 0 && (
                   <p>Lojas: {schedule.empresas_origem.length} selecionadas</p>
                 )}

@@ -14,7 +14,7 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
     name: "",
     reportType: "daily_sales",
     scheduleTime: "08:00",
-    phoneNumber: "",
+    phoneNumbers: "",
     empresasOrigem: "",
   });
 
@@ -28,13 +28,22 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
         .map(c => c.trim())
         .filter(c => c);
 
+      const phoneNumbersArray = formData.phoneNumbers
+        .split(",")
+        .map(p => p.trim())
+        .filter(p => p);
+
+      if (phoneNumbersArray.length === 0) {
+        throw new Error("Adicione pelo menos um número de telefone");
+      }
+
       const { error } = await supabase
         .from("notification_schedules")
         .insert({
           name: formData.name,
           report_type: formData.reportType,
           schedule_time: formData.scheduleTime,
-          phone_number: formData.phoneNumber,
+          phone_numbers: phoneNumbersArray,
           empresas_origem: empresasOrigemArray.length > 0 ? empresasOrigemArray : null,
           active: true,
         });
@@ -50,7 +59,7 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
         name: "",
         reportType: "daily_sales",
         scheduleTime: "08:00",
-        phoneNumber: "",
+        phoneNumbers: "",
         empresasOrigem: "",
       });
 
@@ -111,14 +120,17 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
         </div>
 
         <div>
-          <Label htmlFor="phoneNumber">Número WhatsApp (com DDI)</Label>
+          <Label htmlFor="phoneNumbers">Números WhatsApp (com DDI, separados por vírgula)</Label>
           <Input
-            id="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-            placeholder="5511999999999"
+            id="phoneNumbers"
+            value={formData.phoneNumbers}
+            onChange={(e) => setFormData({ ...formData, phoneNumbers: e.target.value })}
+            placeholder="5511999999999, 5511888888888"
             required
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Separe múltiplos números com vírgula
+          </p>
         </div>
 
         <div>

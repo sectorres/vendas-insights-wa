@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Bell, TrendingUp, Calendar, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bell, Calendar, Activity, Smartphone } from "lucide-react";
 import { NotificationScheduleForm } from "./NotificationScheduleForm";
 import { NotificationScheduleList } from "./NotificationScheduleList";
 import { InsightsPreview } from "./InsightsPreview";
+import { DailySalesCard } from "./DailySalesCard";
+import { Link } from "react-router-dom";
 
 export const Dashboard = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -22,23 +25,19 @@ export const Dashboard = () => {
                 <p className="text-sm text-muted-foreground">Sistema de Notificações WhatsApp</p>
               </div>
             </div>
+            <Link to="/evolution-setup">
+              <Button variant="outline" size="sm">
+                <Smartphone className="h-4 w-4 mr-2" />
+                Conectar WhatsApp
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-6 py-8">
         <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Vendas Hoje</p>
-                <p className="text-2xl font-bold text-foreground">R$ 0,00</p>
-              </div>
-            </div>
-          </Card>
+          <DailySalesCard />
 
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center gap-4">

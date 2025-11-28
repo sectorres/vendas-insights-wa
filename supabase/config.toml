@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.process-insights]
 verify_jwt = false
+
+[functions.evolution-get-qrcode]
+verify_jwt = false
+
+[functions.evolution-check-status]
+verify_jwt = false
