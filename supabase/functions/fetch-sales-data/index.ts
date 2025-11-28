@@ -26,42 +26,61 @@ serve(async (req) => {
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
     const credentials = btoa(`${username}:${password}`);
 
-    const requestBody: any = {
-      paginacao: 1,
-      quantidade: 1000,
-      dataInicial,
-      dataFinal,
-      dataVendaInicial: dataInicial,
-      dataVendaFinal: dataFinal,
-      incluirCanceladas: "NAO",
-      mostraRentabilidade: "NAO",
-      mostraQuestionario: "N"
-    };
+    // Buscar todas as páginas de dados
+    let allRecords: any[] = [];
+    let currentPage = 1;
+    let hasMoreData = true;
 
-    if (empresasOrigem && empresasOrigem.length > 0) {
-      // Converter códigos de string para número
-      requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
+    while (hasMoreData) {
+      const requestBody: any = {
+        paginacao: currentPage,
+        quantidade: 1000,
+        dataInicial,
+        dataFinal,
+        dataVendaInicial: dataInicial,
+        dataVendaFinal: dataFinal,
+        incluirCanceladas: "NAO",
+        mostraRentabilidade: "NAO",
+        mostraQuestionario: "N"
+      };
+
+      if (empresasOrigem && empresasOrigem.length > 0) {
+        requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
+      }
+
+      console.log(`Fetching page ${currentPage}, request body:`, JSON.stringify(requestBody));
+
+      const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${credentials}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`API returned ${response.status}: ${errorText}`);
+      }
+
+      const pageData = await response.json();
+      const records = pageData.content || [];
+      
+      console.log(`Page ${currentPage}: Fetched ${records.length} records`);
+      
+      if (records.length > 0) {
+        allRecords = allRecords.concat(records);
+        currentPage++;
+      } else {
+        hasMoreData = false;
+      }
     }
 
-    console.log('Request body:', JSON.stringify(requestBody));
-
-    const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error:', response.status, errorText);
-      throw new Error(`API returned ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log(`Fetched ${data.content?.length || 0} records`);
+    console.log(`Total records fetched: ${allRecords.length}`);
+    
+    const data = { content: allRecords };
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
