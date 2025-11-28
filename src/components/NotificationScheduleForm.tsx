@@ -30,7 +30,11 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
 
       const phoneNumbersArray = formData.phoneNumbers
         .split(",")
-        .map(p => p.trim())
+        .map(p => {
+          const trimmed = p.trim();
+          // Adicionar 55 automaticamente se não começar com ele
+          return trimmed.startsWith('55') ? trimmed : '55' + trimmed;
+        })
         .filter(p => p);
 
       if (phoneNumbersArray.length === 0) {
@@ -120,16 +124,16 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
         </div>
 
         <div>
-          <Label htmlFor="phoneNumbers">Números WhatsApp (com DDI, separados por vírgula)</Label>
+          <Label htmlFor="phoneNumbers">Números WhatsApp (separados por vírgula)</Label>
           <Input
             id="phoneNumbers"
             value={formData.phoneNumbers}
             onChange={(e) => setFormData({ ...formData, phoneNumbers: e.target.value })}
-            placeholder="5511999999999, 5511888888888"
+            placeholder="11999999999, 11888888888"
             required
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Separe múltiplos números com vírgula
+            Digite DDD + número (o código do país 55 será adicionado automaticamente)
           </p>
         </div>
 
