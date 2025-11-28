@@ -62,7 +62,7 @@ export type Database = {
           empresas_origem: string[] | null
           id: string
           name: string
-          phone_number: string
+          phone_numbers: string[]
           report_type: string
           schedule_days: number[]
           schedule_time: string
@@ -74,7 +74,7 @@ export type Database = {
           empresas_origem?: string[] | null
           id?: string
           name: string
-          phone_number: string
+          phone_numbers?: string[]
           report_type: string
           schedule_days?: number[]
           schedule_time: string
@@ -86,7 +86,7 @@ export type Database = {
           empresas_origem?: string[] | null
           id?: string
           name?: string
-          phone_number?: string
+          phone_numbers?: string[]
           report_type?: string
           schedule_days?: number[]
           schedule_time?: string
