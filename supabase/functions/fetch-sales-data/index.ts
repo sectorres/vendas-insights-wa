@@ -29,10 +29,9 @@ serve(async (req) => {
     // Buscar todas as páginas de dados
     let allRecords: any[] = [];
     let currentPage = 1;
-    let hasMoreData = true;
     const maxPages = 100; // Limite de segurança
 
-    while (hasMoreData && currentPage <= maxPages) {
+    while (currentPage <= maxPages) {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
@@ -49,7 +48,7 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Fetching page ${currentPage}, request body:`, JSON.stringify(requestBody));
+      console.log(`Fetching page ${currentPage}`);
 
       try {
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
@@ -62,10 +61,9 @@ serve(async (req) => {
         });
 
         if (!response.ok) {
-          // Se der erro na página > 1, pode ser que não existam mais páginas
+          // Se der erro na página > 1, assumimos que não há mais páginas
           if (currentPage > 1) {
-            console.log(`No more pages available after page ${currentPage - 1}`);
-            hasMoreData = false;
+            console.log(`No more pages after page ${currentPage - 1}`);
             break;
           }
           const errorText = await response.text();
@@ -78,22 +76,20 @@ serve(async (req) => {
         
         console.log(`Page ${currentPage}: Fetched ${records.length} records`);
         
-        if (records.length > 0) {
-          allRecords = allRecords.concat(records);
-          // Se retornou menos que 1000, provavelmente é a última página
-          if (records.length < 1000) {
-            hasMoreData = false;
-          } else {
-            currentPage++;
-          }
-        } else {
-          hasMoreData = false;
+        // Se não retornou nenhum registro, acabaram as páginas
+        if (records.length === 0) {
+          console.log('No more records found');
+          break;
         }
+        
+        allRecords = allRecords.concat(records);
+        currentPage++;
+        
       } catch (error) {
-        // Se der erro em páginas posteriores, continua com o que já tem
+        // Se der erro em páginas posteriores, para mas mantém o que já coletou
         if (currentPage > 1) {
-          console.log(`Error fetching page ${currentPage}, stopping pagination:`, error);
-          hasMoreData = false;
+          console.log(`Error on page ${currentPage}, stopping. Error:`, error);
+          break;
         } else {
           throw error;
         }
