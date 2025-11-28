@@ -1,1 +1,10 @@
 project_id = "kiyirgmbdtwnedrnoooh"
+
+[functions.fetch-sales-data]
+verify_jwt = false
+
+[functions.send-whatsapp-notification]
+verify_jwt = false
+
+[functions.process-insights]
+verify_jwt = false
