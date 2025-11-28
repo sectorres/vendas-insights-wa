@@ -16,12 +16,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Pegar data e hora atuais
+    // Pegar data e hora atuais em São Paulo (UTC-3)
     const now = new Date();
-    const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
-    const currentDay = now.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+    const saoPauloTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const currentTime = saoPauloTime.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+    const currentDay = saoPauloTime.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
     
-    console.log(`Checking scheduled notifications at ${currentTime} on day ${currentDay}`);
+    console.log(`Checking scheduled notifications at ${currentTime} on day ${currentDay} (São Paulo time)`);
 
     // Buscar agendamentos ativos que devem ser executados neste horário e dia
     const { data: schedules, error: schedulesError } = await supabase
@@ -51,8 +52,8 @@ serve(async (req) => {
         console.log(`Processing schedule: ${schedule.name}`);
 
         try {
-          // Buscar dados de vendas
-          const today = now.toISOString().split('T')[0].replace(/-/g, '');
+          // Buscar dados de vendas usando a data de São Paulo
+          const today = saoPauloTime.toISOString().split('T')[0].replace(/-/g, '');
           
           const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
             body: {
