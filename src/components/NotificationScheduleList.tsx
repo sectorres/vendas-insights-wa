@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Clock, Trash2 } from "lucide-react";
+import { Clock, Trash2, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -109,6 +109,75 @@ export const NotificationScheduleList = ({ refresh }: { refresh: number }) => {
     return types[type] || type;
   };
 
+  const executeManually = async (schedule: Schedule) => {
+    setLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      
+      // Buscar dados de vendas
+      const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
+        body: {
+          dataInicial: today,
+          dataFinal: today,
+          empresasOrigem: schedule.empresas_origem
+        }
+      });
+
+      if (salesError) throw salesError;
+
+      // Processar insights
+      const { data: insights, error: insightsError } = await supabase.functions.invoke('process-insights', {
+        body: {
+          dataInicial: today,
+          dataFinal: today,
+          empresasOrigem: schedule.empresas_origem,
+          reportType: schedule.report_type
+        }
+      });
+
+      if (insightsError) throw insightsError;
+
+      // Formatar mensagem
+      let message = `📊 *Relatório: ${schedule.name}* (TESTE MANUAL)\n\n`;
+      message += `📅 ${new Date().toLocaleDateString('pt-BR')}\n\n`;
+      
+      Object.entries(insights.data || {}).forEach(([store, data]: [string, any]) => {
+        message += `🏪 *${store}*\n`;
+        Object.entries(data).forEach(([key, value]: [string, any]) => {
+          message += `   ${key}: R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+        });
+        message += `\n`;
+      });
+      
+      message += `💰 *Total Geral: R$ ${insights.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`;
+
+      // Enviar WhatsApp
+      const { error: whatsappError } = await supabase.functions.invoke('send-whatsapp-notification', {
+        body: {
+          phoneNumbers: schedule.phone_numbers,
+          message
+        }
+      });
+
+      if (whatsappError) throw whatsappError;
+
+      toast({
+        title: "Sucesso",
+        description: "Notificação enviada manualmente!",
+      });
+    } catch (error) {
+      console.error("Error executing manually:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao executar manualmente",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      fetchSchedules();
+    }
+  };
+
   if (loading) {
     return (
       <Card className="p-6">
@@ -154,6 +223,15 @@ export const NotificationScheduleList = ({ refresh }: { refresh: number }) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => executeManually(schedule)}
+                disabled={loading}
+                title="Executar agora"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
               <Switch
                 checked={schedule.active}
                 onCheckedChange={() => toggleActive(schedule.id, schedule.active)}
