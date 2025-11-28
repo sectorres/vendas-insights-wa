@@ -59,9 +59,6 @@ serve(async (req) => {
     if (!instanceExists) {
       console.log('Creating new instance:', instanceName);
       
-      // URL do webhook para receber eventos da Evolution API
-      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
-      
       const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
         method: 'POST',
         headers: {
@@ -71,16 +68,7 @@ serve(async (req) => {
         body: JSON.stringify({
           instanceName,
           qrcode: true,
-          integration: 'WHATSAPP-BAILEYS',
-          webhook: webhookUrl,
-          webhook_by_events: true,
-          events: [
-            'QRCODE_UPDATED',
-            'CONNECTION_UPDATE',
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'SEND_MESSAGE'
-          ]
+          integration: 'WHATSAPP-BAILEYS'
         })
       });
 
