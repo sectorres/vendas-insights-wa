@@ -30,8 +30,9 @@ serve(async (req) => {
     let allRecords: any[] = [];
     let currentPage = 1;
     let hasMoreData = true;
+    const maxPages = 100; // Limite de segurança
 
-    while (hasMoreData) {
+    while (hasMoreData && currentPage <= maxPages) {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
@@ -50,35 +51,56 @@ serve(async (req) => {
 
       console.log(`Fetching page ${currentPage}, request body:`, JSON.stringify(requestBody));
 
-      const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`
-        },
-        body: JSON.stringify(requestBody)
-      });
+      try {
+        const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${credentials}`
+          },
+          body: JSON.stringify(requestBody)
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
-        throw new Error(`API returned ${response.status}: ${errorText}`);
-      }
+        if (!response.ok) {
+          // Se der erro na página > 1, pode ser que não existam mais páginas
+          if (currentPage > 1) {
+            console.log(`No more pages available after page ${currentPage - 1}`);
+            hasMoreData = false;
+            break;
+          }
+          const errorText = await response.text();
+          console.error('API Error on first page:', response.status, errorText);
+          throw new Error(`API returned ${response.status}: ${errorText}`);
+        }
 
-      const pageData = await response.json();
-      const records = pageData.content || [];
-      
-      console.log(`Page ${currentPage}: Fetched ${records.length} records`);
-      
-      if (records.length > 0) {
-        allRecords = allRecords.concat(records);
-        currentPage++;
-      } else {
-        hasMoreData = false;
+        const pageData = await response.json();
+        const records = pageData.content || [];
+        
+        console.log(`Page ${currentPage}: Fetched ${records.length} records`);
+        
+        if (records.length > 0) {
+          allRecords = allRecords.concat(records);
+          // Se retornou menos que 1000, provavelmente é a última página
+          if (records.length < 1000) {
+            hasMoreData = false;
+          } else {
+            currentPage++;
+          }
+        } else {
+          hasMoreData = false;
+        }
+      } catch (error) {
+        // Se der erro em páginas posteriores, continua com o que já tem
+        if (currentPage > 1) {
+          console.log(`Error fetching page ${currentPage}, stopping pagination:`, error);
+          hasMoreData = false;
+        } else {
+          throw error;
+        }
       }
     }
 
-    console.log(`Total records fetched: ${allRecords.length}`);
+    console.log(`Total records fetched: ${allRecords.length} across ${currentPage - 1} pages`);
     
     const data = { content: allRecords };
 
