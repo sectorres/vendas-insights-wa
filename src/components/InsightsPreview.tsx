@@ -181,12 +181,12 @@ export const InsightsPreview = () => {
         </div>
 
         <div>
-          <Label htmlFor="empresasOrigemPreview">CNPJs das Lojas (opcional)</Label>
+          <Label htmlFor="empresasOrigemPreview">Códigos das Lojas (opcional)</Label>
           <Input
             id="empresasOrigemPreview"
             value={formData.empresasOrigem}
             onChange={(e) => setFormData({ ...formData, empresasOrigem: e.target.value })}
-            placeholder="55728224001111, 55728224009999"
+            placeholder="1, 2, 3"
           />
         </div>
 

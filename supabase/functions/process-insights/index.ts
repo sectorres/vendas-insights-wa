@@ -10,6 +10,7 @@ interface SalesData {
   empresaOrigem: {
     nome: string;
     cnpj: string;
+    codigo: number;
   };
   valorProdutos: number;
   valorFrete: number;
@@ -82,7 +83,8 @@ function processDailySales(salesData: SalesData[]) {
   const salesByStoreAndDate: { [key: string]: { [date: string]: number } } = {};
 
   salesData.forEach(sale => {
-    const storeName = sale.empresaOrigem.nome;
+    const storeCodigo = sale.empresaOrigem.codigo;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
     const date = sale.data;
     const valueWithoutFreight = sale.valorProdutos; // Já vem sem frete
 
@@ -110,7 +112,8 @@ function processMonthlySales(salesData: SalesData[]) {
   const salesByStoreAndMonth: { [key: string]: { [month: string]: number } } = {};
 
   salesData.forEach(sale => {
-    const storeName = sale.empresaOrigem.nome;
+    const storeCodigo = sale.empresaOrigem.codigo;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
     const month = sale.data.substring(3); // Pega MM/YYYY de DD/MM/YYYY
     const valueWithoutFreight = sale.valorProdutos;
 
@@ -138,7 +141,8 @@ function processSalesByType(salesData: SalesData[]) {
   const salesByStoreAndType: { [key: string]: { [type: string]: number } } = {};
 
   salesData.forEach(sale => {
-    const storeName = sale.empresaOrigem.nome;
+    const storeCodigo = sale.empresaOrigem.codigo;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
 
     if (!salesByStoreAndType[storeName]) {
       salesByStoreAndType[storeName] = {};
