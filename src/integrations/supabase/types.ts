@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      evolution_settings: {
+        Row: {
+          api_key: string
+          api_url: string
+          created_at: string
+          id: string
+          instance_name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          api_url: string
+          created_at?: string
+          id?: string
+          instance_name?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          api_url?: string
+          created_at?: string
+          id?: string
+          instance_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_history: {
         Row: {
           error_message: string | null

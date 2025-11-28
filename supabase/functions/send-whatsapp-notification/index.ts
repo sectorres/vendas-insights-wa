@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,17 +21,28 @@ serve(async (req) => {
 
     console.log('Sending WhatsApp notification to:', phoneNumbers);
 
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (!evolutionApiUrl || !evolutionApiKey) {
-      throw new Error('Evolution API credentials not configured');
+    // Buscar configurações do banco
+    const { data: settings, error: settingsError } = await supabase
+      .from('evolution_settings')
+      .select('*')
+      .single();
+
+    if (settingsError || !settings) {
+      throw new Error('Configurações da Evolution API não encontradas');
     }
+
+    // Normalizar URL - remover trailing slash
+    const evolutionApiUrl = settings.api_url.replace(/\/$/, '');
+    const evolutionApiKey = settings.api_key;
 
     // Enviar para todos os números
     const results = await Promise.allSettled(
       phoneNumbers.map(async (phoneNumber) => {
-        const response = await fetch(`${evolutionApiUrl}/message/sendText`, {
+        const response = await fetch(`${evolutionApiUrl}/message/sendText/${settings.instance_name}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
