@@ -98,7 +98,20 @@ serve(async (req) => {
 
     console.log(`Total records fetched: ${allRecords.length} across ${currentPage - 1} pages`);
     
-    const data = { content: allRecords };
+    // Se for consulta de um único dia (dataInicial === dataFinal), filtrar pelo dia específico
+    let filteredRecords = allRecords;
+    if (dataInicial === dataFinal) {
+      // Converter YYYYMMDD para DD/MM/YYYY
+      const year = dataInicial.substring(0, 4);
+      const month = dataInicial.substring(4, 6);
+      const day = dataInicial.substring(6, 8);
+      const targetDate = `${day}/${month}/${year}`;
+      
+      filteredRecords = allRecords.filter(record => record.data === targetDate);
+      console.log(`Filtered to ${filteredRecords.length} records for date ${targetDate}`);
+    }
+    
+    const data = { content: filteredRecords };
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
