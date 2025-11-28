@@ -98,7 +98,7 @@ serve(async (req) => {
 
     console.log(`Total records fetched: ${allRecords.length} across ${currentPage - 1} pages`);
     
-    // Se for consulta de um único dia (dataInicial === dataFinal), filtrar pelo dia específico
+    // Se for consulta de um único dia (dataInicial === dataFinal), filtrar pelo dia específico usando dataVenda
     let filteredRecords = allRecords;
     if (dataInicial === dataFinal) {
       // Converter YYYYMMDD para DD/MM/YYYY
@@ -107,8 +107,8 @@ serve(async (req) => {
       const day = dataInicial.substring(6, 8);
       const targetDate = `${day}/${month}/${year}`;
       
-      filteredRecords = allRecords.filter(record => record.data === targetDate);
-      console.log(`Filtered to ${filteredRecords.length} records for date ${targetDate}`);
+      filteredRecords = allRecords.filter(record => record.dataVenda === targetDate);
+      console.log(`Filtered to ${filteredRecords.length} records for dataVenda ${targetDate}`);
     }
     
     const data = { content: filteredRecords };
