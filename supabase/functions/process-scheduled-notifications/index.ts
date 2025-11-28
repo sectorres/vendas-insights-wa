@@ -56,22 +56,28 @@ serve(async (req) => {
           let dataInicial: string;
           let dataFinal: string;
           
+          // Formatar data de São Paulo no formato YYYYMMDD
+          const year = saoPauloTime.getFullYear();
+          const month = String(saoPauloTime.getMonth() + 1).padStart(2, '0');
+          const day = String(saoPauloTime.getDate()).padStart(2, '0');
+          const todayFormatted = `${year}${month}${day}`;
+          
           if (schedule.report_type === 'monthly_sales') {
             // Para vendas mensais: primeiro ao último dia do mês corrente
-            const firstDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth(), 1);
-            const lastDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth() + 1, 0);
+            const firstDay = `${year}${month}01`;
+            const lastDayOfMonth = new Date(year, saoPauloTime.getMonth() + 1, 0);
+            const lastDay = `${year}${month}${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
             
-            dataInicial = firstDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
-            dataFinal = lastDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
+            dataInicial = firstDay;
+            dataFinal = lastDay;
             
             console.log(`Monthly report dates: ${dataInicial} to ${dataFinal}`);
           } else {
-            // Para vendas diárias: do início do dia até o momento atual
-            const today = saoPauloTime.toISOString().split('T')[0].replace(/-/g, '');
-            dataInicial = today;
-            dataFinal = today;
+            // Para vendas diárias: apenas o dia corrente
+            dataInicial = todayFormatted;
+            dataFinal = todayFormatted;
             
-            console.log(`Daily report date: ${today}`);
+            console.log(`Daily report date: ${todayFormatted} (${day}/${month}/${year})`);
           }
           
           const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
