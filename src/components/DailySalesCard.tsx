@@ -16,7 +16,11 @@ export const DailySalesCard = () => {
   const fetchDailySales = async () => {
     try {
       const today = new Date();
-      const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+      const formattedDate = `${day}/${month}/${year}`;
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
@@ -28,7 +32,9 @@ export const DailySalesCard = () => {
       if (error) throw error;
 
       if (data && data.content) {
-        const total = data.content.reduce((sum: number, sale: any) => {
+        // Filtrar apenas vendas do dia específico
+        const todaySales = data.content.filter((sale: any) => sale.data === formattedDate);
+        const total = todaySales.reduce((sum: number, sale: any) => {
           return sum + (sale.valorProdutos || 0);
         }, 0);
         setTotalSales(total);
