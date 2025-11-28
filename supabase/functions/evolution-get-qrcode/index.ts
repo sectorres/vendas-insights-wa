@@ -40,31 +40,51 @@ serve(async (req) => {
 
     console.log('Using API URL:', evolutionApiUrl);
 
-    // Criar/conectar instância
-    const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
-      method: 'POST',
+    // Verificar se a instância já existe
+    const fetchResponse = await fetch(`${evolutionApiUrl}/instance/fetchInstances`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'apikey': evolutionApiKey
-      },
-      body: JSON.stringify({
-        instanceName,
-        qrcode: true,
-        integration: 'WHATSAPP-BAILEYS'
-      })
+      }
     });
 
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      console.error('Evolution API Error (create):', createResponse.status, errorText);
-      throw new Error(`Evolution API returned ${createResponse.status}: ${errorText}`);
+    let instanceExists = false;
+    if (fetchResponse.ok) {
+      const instances = await fetchResponse.json();
+      instanceExists = instances.some((inst: any) => inst.instance?.instanceName === instanceName);
+      console.log('Instance exists:', instanceExists);
     }
 
-    const createData = await createResponse.json();
-    console.log('Instance created/connected:', createData);
+    // Criar instância apenas se não existir
+    if (!instanceExists) {
+      console.log('Creating new instance:', instanceName);
+      const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evolutionApiKey
+        },
+        body: JSON.stringify({
+          instanceName,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS'
+        })
+      });
 
-    // Aguardar um pouco para a instância inicializar
-    await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('Evolution API Error (create):', createResponse.status, errorText);
+        throw new Error(`Evolution API returned ${createResponse.status}: ${errorText}`);
+      }
+
+      const createData = await createResponse.json();
+      console.log('Instance created:', createData);
+
+      // Aguardar um pouco para a instância inicializar
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } else {
+      console.log('Using existing instance:', instanceName);
+    }
 
     // Obter QR code
     const qrResponse = await fetch(`${evolutionApiUrl}/instance/connect/${instanceName}`, {
