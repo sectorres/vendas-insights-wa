@@ -134,12 +134,12 @@ export const NotificationScheduleForm = ({ onSuccess }: { onSuccess: () => void 
         </div>
 
         <div>
-          <Label htmlFor="empresasOrigem">CNPJs das Lojas (opcional, separados por vírgula)</Label>
+          <Label htmlFor="empresasOrigem">Códigos das Lojas (opcional, separados por vírgula)</Label>
           <Input
             id="empresasOrigem"
             value={formData.empresasOrigem}
             onChange={(e) => setFormData({ ...formData, empresasOrigem: e.target.value })}
-            placeholder="55728224001111, 55728224009999"
+            placeholder="1, 2, 3"
           />
           <p className="text-xs text-muted-foreground mt-1">
             Deixe vazio para incluir todas as lojas

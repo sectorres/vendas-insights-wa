@@ -9,7 +9,7 @@ const corsHeaders = {
 interface SalesDataRequest {
   dataInicial: string;
   dataFinal: string;
-  empresasOrigem?: string[];
+  empresasOrigem?: string[]; // Códigos das lojas como strings, ex: ["1", "2", "3"]
 }
 
 serve(async (req) => {
@@ -39,7 +39,8 @@ serve(async (req) => {
     };
 
     if (empresasOrigem && empresasOrigem.length > 0) {
-      requestBody.empresasOrigem = empresasOrigem;
+      // Converter códigos de string para número
+      requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
     }
 
     console.log('Request body:', JSON.stringify(requestBody));
