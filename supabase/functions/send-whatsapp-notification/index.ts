@@ -50,7 +50,9 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             number: phoneNumber,
-            text: message
+            textMessage: {
+              text: message
+            }
           })
         });
 

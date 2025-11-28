@@ -40,19 +40,22 @@ serve(async (req) => {
 
     console.log('Using API URL:', evolutionApiUrl);
 
-    // Verificar se a instância já existe
-    const fetchResponse = await fetch(`${evolutionApiUrl}/instance/fetchInstances`, {
-      method: 'GET',
-      headers: {
-        'apikey': evolutionApiKey
-      }
-    });
-
+    // Tentar conectar primeiro para verificar se a instância existe
     let instanceExists = false;
-    if (fetchResponse.ok) {
-      const instances = await fetchResponse.json();
-      instanceExists = instances.some((inst: any) => inst.instance?.instanceName === instanceName);
-      console.log('Instance exists:', instanceExists);
+    try {
+      const connectTest = await fetch(`${evolutionApiUrl}/instance/connectionState/${instanceName}`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolutionApiKey
+        }
+      });
+      
+      if (connectTest.ok) {
+        instanceExists = true;
+        console.log('Instance already exists:', instanceName);
+      }
+    } catch (error) {
+      console.log('Instance does not exist yet');
     }
 
     // Criar instância apenas se não existir
@@ -75,16 +78,21 @@ serve(async (req) => {
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
         console.error('Evolution API Error (create):', createResponse.status, errorText);
-        throw new Error(`Evolution API returned ${createResponse.status}: ${errorText}`);
+        
+        // Se o erro for que a instância já existe, não é um erro fatal
+        if (createResponse.status === 403 && errorText.includes('already in use')) {
+          console.log('Instance already exists, continuing...');
+          instanceExists = true;
+        } else {
+          throw new Error(`Evolution API returned ${createResponse.status}: ${errorText}`);
+        }
+      } else {
+        const createData = await createResponse.json();
+        console.log('Instance created:', createData);
+
+        // Aguardar um pouco para a instância inicializar
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-
-      const createData = await createResponse.json();
-      console.log('Instance created:', createData);
-
-      // Aguardar um pouco para a instância inicializar
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } else {
-      console.log('Using existing instance:', instanceName);
     }
 
     // Obter QR code
@@ -102,11 +110,12 @@ serve(async (req) => {
     }
 
     const qrData = await qrResponse.json();
-    console.log('QR code obtained');
+    console.log('QR code obtained successfully');
 
     return new Response(JSON.stringify({
-      qrcode: qrData.qrcode?.code || qrData.code,
-      status: qrData.status || 'pending',
+      qrcode: qrData.code || qrData.base64,
+      pairingCode: qrData.pairingCode,
+      status: 'pending',
       instanceName
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
