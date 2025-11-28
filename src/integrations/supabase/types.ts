@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      notification_history: {
+        Row: {
+          error_message: string | null
+          id: string
+          phone_number: string
+          report_data: Json | null
+          report_type: string
+          schedule_id: string | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          phone_number: string
+          report_data?: Json | null
+          report_type: string
+          schedule_id?: string | null
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          phone_number?: string
+          report_data?: Json | null
+          report_type?: string
+          schedule_id?: string | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "notification_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          empresas_origem: string[] | null
+          id: string
+          name: string
+          phone_number: string
+          report_type: string
+          schedule_days: number[]
+          schedule_time: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          empresas_origem?: string[] | null
+          id?: string
+          name: string
+          phone_number: string
+          report_type: string
+          schedule_days?: number[]
+          schedule_time: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          empresas_origem?: string[] | null
+          id?: string
+          name?: string
+          phone_number?: string
+          report_type?: string
+          schedule_days?: number[]
+          schedule_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
