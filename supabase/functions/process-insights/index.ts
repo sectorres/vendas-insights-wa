@@ -86,8 +86,7 @@ function processDailySales(salesData: SalesData[]) {
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
     const date = sale.data;
-    // Somar o valorLiquido de cada produto da venda
-    const valueWithoutFreight = sale.produtos.reduce((sum, product) => sum + product.valorLiquido, 0);
+    const valueWithoutFreight = sale.valorProdutos;
 
     if (!salesByStoreAndDate[storeName]) {
       salesByStoreAndDate[storeName] = {};
@@ -116,8 +115,7 @@ function processMonthlySales(salesData: SalesData[]) {
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
     const month = sale.data.substring(3); // Pega MM/YYYY de DD/MM/YYYY
-    // Somar o valorLiquido de cada produto da venda
-    const valueWithoutFreight = sale.produtos.reduce((sum, product) => sum + product.valorLiquido, 0);
+    const valueWithoutFreight = sale.valorProdutos;
 
     if (!salesByStoreAndMonth[storeName]) {
       salesByStoreAndMonth[storeName] = {};
