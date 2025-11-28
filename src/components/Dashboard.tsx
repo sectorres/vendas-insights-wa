@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, Calendar, Activity, Smartphone } from "lucide-react";
+import { Bell, Smartphone } from "lucide-react";
 import { NotificationScheduleForm } from "./NotificationScheduleForm";
 import { NotificationScheduleList } from "./NotificationScheduleList";
 import { InsightsPreview } from "./InsightsPreview";
 import { DailySalesCard } from "./DailySalesCard";
+import { ActiveNotificationsCard } from "./ActiveNotificationsCard";
+import { MonthlySentCard } from "./MonthlySentCard";
 import { Link } from "react-router-dom";
 
 export const Dashboard = () => {
@@ -38,30 +39,8 @@ export const Dashboard = () => {
       <main className="container mx-auto px-6 py-8">
         <div className="grid gap-6 md:grid-cols-3 mb-8">
           <DailySalesCard />
-
-          <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
-                <Activity className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Notificações Ativas</p>
-                <p className="text-2xl font-bold text-foreground">0</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-accent" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Enviadas Este Mês</p>
-                <p className="text-2xl font-bold text-foreground">0</p>
-              </div>
-            </div>
-          </Card>
+          <ActiveNotificationsCard />
+          <MonthlySentCard />
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2">

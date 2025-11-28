@@ -52,13 +52,32 @@ serve(async (req) => {
         console.log(`Processing schedule: ${schedule.name}`);
 
         try {
-          // Buscar dados de vendas usando a data de São Paulo
-          const today = saoPauloTime.toISOString().split('T')[0].replace(/-/g, '');
+          // Calcular datas baseado no tipo de relatório
+          let dataInicial: string;
+          let dataFinal: string;
+          
+          if (schedule.report_type === 'monthly_sales') {
+            // Para vendas mensais: primeiro ao último dia do mês corrente
+            const firstDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth(), 1);
+            const lastDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth() + 1, 0);
+            
+            dataInicial = firstDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
+            dataFinal = lastDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
+            
+            console.log(`Monthly report dates: ${dataInicial} to ${dataFinal}`);
+          } else {
+            // Para vendas diárias: do início do dia até o momento atual
+            const today = saoPauloTime.toISOString().split('T')[0].replace(/-/g, '');
+            dataInicial = today;
+            dataFinal = today;
+            
+            console.log(`Daily report date: ${today}`);
+          }
           
           const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
             body: {
-              dataInicial: today,
-              dataFinal: today,
+              dataInicial,
+              dataFinal,
               empresasOrigem: schedule.empresas_origem
             }
           });
@@ -73,8 +92,8 @@ serve(async (req) => {
           // Processar insights
           const { data: insights, error: insightsError } = await supabase.functions.invoke('process-insights', {
             body: {
-              dataInicial: today,
-              dataFinal: today,
+              dataInicial,
+              dataFinal,
               empresasOrigem: schedule.empresas_origem,
               reportType: schedule.report_type
             }
