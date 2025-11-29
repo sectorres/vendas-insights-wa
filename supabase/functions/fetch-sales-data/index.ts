@@ -101,23 +101,37 @@ serve(async (req) => {
     // Se for consulta de um único dia (dataInicial === dataFinal), filtrar pelo dia específico usando data
     let filteredRecords = allRecords;
     if (dataInicial === dataFinal) {
-      // Converter YYYYMMDD para DD/MM/YYYY
-      const year = dataInicial.substring(0, 4);
-      const month = dataInicial.substring(4, 6);
-      const day = dataInicial.substring(6, 8);
-      const targetDate = `${day}/${month}/${year}`;
+      const targetDateStr = dataInicial; // YYYYMMDD
+      const targetYear = parseInt(targetDateStr.substring(0, 4), 10);
+      const targetMonth = parseInt(targetDateStr.substring(4, 6), 10) - 1; // Month is 0-indexed
+      const targetDay = parseInt(targetDateStr.substring(6, 8), 10);
+
+      // Create a Date object for the target day, at midnight UTC to avoid timezone issues
+      const targetDate = new Date(Date.UTC(targetYear, targetMonth, targetDay));
       
-      console.log(`fetch-sales-data: Applying single-day filter for target date: ${targetDate}`);
+      console.log(`fetch-sales-data: Applying single-day filter for target date (YYYYMMDD): ${targetDateStr}`);
+      console.log(`fetch-sales-data: Parsed target Date (UTC): ${targetDate.toISOString()}`);
+
       const initialCount = allRecords.length;
       filteredRecords = allRecords.filter(record => {
-        const recordDate = typeof record.data === 'string' ? record.data.split(' ')[0] : ''; // Considera apenas a parte da data
-        if (recordDate !== targetDate) {
-          console.log(`fetch-sales-data: Skipping record with date "${recordDate}" as it does not match target "${targetDate}"`);
-          return false;
+        if (typeof record.data !== 'string' || !record.data) {
+          return false; // Skip records without a valid date string
         }
-        return true;
+        // Parse record.data (DD/MM/YYYY) into a Date object (UTC)
+        const [day, month, year] = record.data.split(' ')[0].split('/').map(Number);
+        const recordDate = new Date(Date.UTC(year, month - 1, day)); // Month is 0-indexed
+
+        // Compare dates by their UTC day, month, and year
+        const isSameDay = recordDate.getUTCFullYear() === targetDate.getUTCFullYear() &&
+                          recordDate.getUTCMonth() === targetDate.getUTCMonth() &&
+                          recordDate.getUTCDate() === targetDate.getUTCDate();
+
+        if (!isSameDay) {
+          console.log(`fetch-sales-data: Skipping record with date "${record.data}" (parsed UTC: ${recordDate.toISOString()}) as it does not match target (UTC: ${targetDate.toISOString()})`);
+        }
+        return isSameDay;
       });
-      console.log(`fetch-sales-data: Filtered from ${initialCount} to ${filteredRecords.length} records for data ${targetDate}`);
+      console.log(`fetch-sales-data: Filtered from ${initialCount} to ${filteredRecords.length} records for data ${targetDateStr}`);
     }
     
     const data = { content: filteredRecords };
