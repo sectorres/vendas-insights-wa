@@ -21,6 +21,17 @@ function convertToYYYYMMDD(dateString: string): string {
   return ''; // Invalid format
 }
 
+// New helper function to convert YYYYMMDD to YYYY/MM/DD
+function formatDateToYYYYSlashMMSlashDD(dateYYYYMMDD: string): string {
+  if (dateYYYYMMDD.length === 8) {
+    const year = dateYYYYMMDD.substring(0, 4);
+    const month = dateYYYYMMDD.substring(4, 6);
+    const day = dateYYYYMMDD.substring(6, 8);
+    return `${year}/${month}/${day}`;
+  }
+  return dateYYYYMMDD; // Return as is if format is not YYYYMMDD
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,10 +40,9 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
-    // A API externa espera YYYYMMDD para dataVendaInicial e dataVendaFinal
-    // Usamos dataInicial e dataFinal diretamente, pois já vêm no formato YYYYMMDD
-    const externalApiDataVendaInicial = dataInicial;
-    const externalApiDataVendaFinal = dataFinal;
+    // Converter para o formato YYYY/MM/DD para a API externa
+    const externalApiDataVendaInicial = formatDateToYYYYSlashMMSlashDD(dataInicial);
+    const externalApiDataVendaFinal = formatDateToYYYYSlashMMSlashDD(dataFinal);
 
     console.log('Fetching sales data for external API:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
 
@@ -90,10 +100,10 @@ serve(async (req) => {
         // Filter records by date within the edge function
         const filteredRecords = records.filter((sale: any) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
-          return saleDateYYYYMMDD >= externalApiDataVendaInicial && saleDateYYYYMMDD <= externalApiDataVendaFinal;
+          return saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal; // Use original YYYYMMDD for internal filtering
         });
 
-        console.log(`Page ${currentPage}: ${filteredRecords.length} records after filtering by date range (${externalApiDataVendaInicial} to ${externalApiDataVendaFinal})`);
+        console.log(`Page ${currentPage}: ${filteredRecords.length} records after filtering by date range (${dataInicial} to ${dataFinal})`);
         
         if (records.length === 0) { // Check original records length for pagination break
           console.log('No more records found from external API for this page.');
