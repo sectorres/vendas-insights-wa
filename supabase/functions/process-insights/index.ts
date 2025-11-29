@@ -15,7 +15,7 @@ interface SalesData {
   valorProdutos: number;
   valorFrete: number;
   data: string; // Data de emissão/processamento da nota
-  dataVenda: string; // Data real da venda
+  dataVenda: string; // Data real da venda (ex: DD/MM/YYYY HH:MM:SS ou DD/MM/YYYY)
   produtos: Array<{
     tipo: string;
     valorLiquido: number;
@@ -95,27 +95,30 @@ serve(async (req) => {
   }
 });
 
-function processDailySales(salesData: SalesData[], targetDate: string) {
+// Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
+function convertToYYYYMMDD(dateString: string): string {
+  const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
+  if (parts.length === 3) {
+    return `${parts[2]}${parts[1]}${parts[0]}`; // YYYYMMDD
+  }
+  return ''; // Invalid format
+}
+
+function processDailySales(salesData: SalesData[], targetDateYYYYMMDD: string) {
   const salesByStoreAndDate: { [key: string]: { [date: string]: number } } = {};
   
-  // Converter targetDate de YYYYMMDD para DD/MM/YYYY para comparação
-  const year = targetDate.substring(0, 4);
-  const month = targetDate.substring(4, 6);
-  const day = targetDate.substring(6, 8);
-  const formattedTargetDate = `${day}/${month}/${year}`;
-  
-  console.log(`processDailySales: Target date for filtering: ${formattedTargetDate}`);
+  console.log(`processDailySales: Target date for filtering (YYYYMMDD): ${targetDateYYYYMMDD}`);
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
     const valueWithoutFreight = sale.valorProdutos;
-    const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
+    const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
 
-    console.log(`processDailySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Date: "${saleDate}", Value: ${valueWithoutFreight}`);
+    console.log(`processDailySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Converted YYYYMMDD: "${saleDateYYYYMMDD}", Value: ${valueWithoutFreight}`);
 
-    if (saleDate !== formattedTargetDate) {
-      console.log(`processDailySales: Skipping sale from ${storeName} (Code: ${storeCodigo}) with date "${saleDate}" as it does not match target "${formattedTargetDate}"`);
+    if (saleDateYYYYMMDD !== targetDateYYYYMMDD) {
+      console.log(`processDailySales: Skipping sale from ${storeName} (Code: ${storeCodigo}) with date "${saleDateYYYYMMDD}" as it does not match target "${targetDateYYYYMMDD}"`);
       return;
     }
     
@@ -123,12 +126,12 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
       salesByStoreAndDate[storeName] = {};
     }
 
-    if (!salesByStoreAndDate[storeName][saleDate]) {
-      salesByStoreAndDate[storeName][saleDate] = 0;
+    if (!salesByStoreAndDate[storeName][saleDateYYYYMMDD]) {
+      salesByStoreAndDate[storeName][saleDateYYYYMMDD] = 0;
     }
 
-    salesByStoreAndDate[storeName][saleDate] += valueWithoutFreight;
-    console.log(`processDailySales: Added ${valueWithoutFreight} to ${storeName} for ${saleDate}. Current total: ${salesByStoreAndDate[storeName][saleDate]}`);
+    salesByStoreAndDate[storeName][saleDateYYYYMMDD] += valueWithoutFreight;
+    console.log(`processDailySales: Added ${valueWithoutFreight} to ${storeName} for ${saleDateYYYYMMDD}. Current total: ${salesByStoreAndDate[storeName][saleDateYYYYMMDD]}`);
   });
   
   console.log(`processDailySales: Final aggregated data for daily sales:`, salesByStoreAndDate);
@@ -147,22 +150,30 @@ function processMonthlySales(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
     const valueWithoutFreight = sale.valorProdutos;
-    const month = typeof sale.dataVenda === 'string' ? sale.dataVenda.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
+    
+    // Extract MM/YYYY from DD/MM/YYYY [HH:MM:SS]
+    const saleDateParts = sale.dataVenda.split(' ')[0].split('/');
+    const monthYYYY = saleDateParts.length === 3 ? `${saleDateParts[1]}/${saleDateParts[2]}` : '';
 
-    console.log(`processMonthlySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Month: "${month}", Value: ${valueWithoutFreight}`);
+    console.log(`processMonthlySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Month: "${monthYYYY}", Value: ${valueWithoutFreight}`);
+
+    if (!monthYYYY) {
+      console.warn(`processMonthlySales: Skipping sale due to invalid month format for sale.dataVenda: "${sale.dataVenda}"`);
+      return;
+    }
 
     if (!salesByStoreAndMonth[storeName]) {
       salesByStoreAndMonth[storeName] = {};
     }
 
-    if (!salesByStoreAndMonth[storeName][month]) {
-      salesByStoreAndMonth[storeName][month] = 0;
+    if (!salesByStoreAndMonth[storeName][monthYYYY]) {
+      salesByStoreAndMonth[storeName][monthYYYY] = 0;
     }
 
-    salesByStoreAndMonth[storeName][month] += valueWithoutFreight;
-    console.log(`processMonthlySales: Added ${valueWithoutFreight} to ${storeName} for ${month}. Current total: ${salesByStoreAndMonth[storeName][month]}`);
+    salesByStoreAndMonth[storeName][monthYYYY] += valueWithoutFreight;
+    console.log(`processMonthlySales: Added ${valueWithoutFreight} to ${storeName} for ${monthYYYY}. Current total: ${salesByStoreAndMonth[storeName][monthYYYY]}`);
   });
 
   return {
@@ -179,7 +190,7 @@ function processSalesByType(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
 
     if (!salesByStoreAndType[storeName]) {
       salesByStoreAndType[storeName] = {};
