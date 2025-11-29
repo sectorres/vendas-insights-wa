@@ -37,22 +37,35 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem, reportType } = await req.json() as ProcessInsightsRequest;
 
-    console.log('Processing insights:', { dataInicial, dataFinal, reportType });
+    console.log('Processing insights request:', { dataInicial, dataFinal, empresasOrigem, reportType });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Buscar dados de vendas
-    const { data: salesResponse } = await supabase.functions.invoke('fetch-sales-data', {
+    console.log('Invoking fetch-sales-data with:', { dataInicial, dataFinal, empresasOrigem });
+    const { data: salesResponse, error: fetchSalesError } = await supabase.functions.invoke('fetch-sales-data', {
       body: { dataInicial, dataFinal, empresasOrigem }
     });
 
+    if (fetchSalesError) {
+      console.error('Error invoking fetch-sales-data:', fetchSalesError);
+      throw fetchSalesError;
+    }
+
     if (!salesResponse || !salesResponse.content) {
-      throw new Error('Falha ao buscar dados de vendas');
+      console.warn('No sales data content received from fetch-sales-data. Returning empty insights.');
+      // Return empty insights if no data
+      return new Response(JSON.stringify({ type: reportType, data: {}, total: 0 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const salesData: SalesData[] = salesResponse.content;
+    console.log(`Received ${salesData.length} sales records from fetch-sales-data.`);
+    // Log a sample of salesData to avoid overwhelming logs if it's huge
+    console.log('Sample sales data (first 5 records):', salesData.slice(0, 5)); 
 
     // Processar insights baseado no tipo de relatório
     let insights: any = {};
@@ -64,6 +77,8 @@ serve(async (req) => {
     } else if (reportType === 'sales_by_type') {
       insights = processSalesByType(salesData);
     }
+    
+    console.log('Final insights generated:', insights);
 
     return new Response(JSON.stringify(insights), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,8 +110,11 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
     // Usar sale.dataVenda para filtrar vendas diárias
     const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
 
+    // Add more detailed logging for the date comparison
+    console.log(`processDailySales: Comparing sale.dataVenda ("${sale.dataVenda}") -> extracted saleDate ("${saleDate}") with formattedTargetDate ("${formattedTargetDate}") for store code: ${sale.empresaOrigem.codigo}`);
+
     if (saleDate !== formattedTargetDate) {
-      console.log(`processDailySales: Skipping sale with dataVenda "${saleDate}" as it does not match target "${formattedTargetDate}"`);
+      console.log(`processDailySales: Skipping sale with dataVenda "${saleDate}" (store: ${sale.empresaOrigem.codigo}) as it does not match target "${formattedTargetDate}"`);
       return;
     }
     
