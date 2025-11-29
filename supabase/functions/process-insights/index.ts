@@ -107,21 +107,18 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
   console.log(`processDailySales: Target date for filtering: ${formattedTargetDate}`);
 
   salesData.forEach(sale => {
-    // Usar sale.dataVenda para filtrar vendas diárias
-    const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
-
-    // Add more detailed logging for the date comparison
-    console.log(`processDailySales: Comparing sale.dataVenda ("${sale.dataVenda}") -> extracted saleDate ("${saleDate}") with formattedTargetDate ("${formattedTargetDate}") for store code: ${sale.empresaOrigem.codigo}`);
-
-    if (saleDate !== formattedTargetDate) {
-      console.log(`processDailySales: Skipping sale with dataVenda "${saleDate}" (store: ${sale.empresaOrigem.codigo}) as it does not match target "${formattedTargetDate}"`);
-      return;
-    }
-    
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
     const valueWithoutFreight = sale.valorProdutos;
+    const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
 
+    console.log(`processDailySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Date: "${saleDate}", Value: ${valueWithoutFreight}`);
+
+    if (saleDate !== formattedTargetDate) {
+      console.log(`processDailySales: Skipping sale from ${storeName} (Code: ${storeCodigo}) with date "${saleDate}" as it does not match target "${formattedTargetDate}"`);
+      return;
+    }
+    
     if (!salesByStoreAndDate[storeName]) {
       salesByStoreAndDate[storeName] = {};
     }
@@ -131,6 +128,7 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
     }
 
     salesByStoreAndDate[storeName][saleDate] += valueWithoutFreight;
+    console.log(`processDailySales: Added ${valueWithoutFreight} to ${storeName} for ${saleDate}. Current total: ${salesByStoreAndDate[storeName][saleDate]}`);
   });
   
   console.log(`processDailySales: Final aggregated data for daily sales:`, salesByStoreAndDate);
@@ -150,9 +148,10 @@ function processMonthlySales(salesData: SalesData[]) {
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
-    // Usar sale.dataVenda para vendas mensais
-    const month = typeof sale.dataVenda === 'string' ? sale.dataVenda.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
     const valueWithoutFreight = sale.valorProdutos;
+    const month = typeof sale.dataVenda === 'string' ? sale.dataVenda.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
+
+    console.log(`processMonthlySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Month: "${month}", Value: ${valueWithoutFreight}`);
 
     if (!salesByStoreAndMonth[storeName]) {
       salesByStoreAndMonth[storeName] = {};
@@ -163,6 +162,7 @@ function processMonthlySales(salesData: SalesData[]) {
     }
 
     salesByStoreAndMonth[storeName][month] += valueWithoutFreight;
+    console.log(`processMonthlySales: Added ${valueWithoutFreight} to ${storeName} for ${month}. Current total: ${salesByStoreAndMonth[storeName][month]}`);
   });
 
   return {

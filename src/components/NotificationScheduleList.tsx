@@ -109,27 +109,38 @@ export const NotificationScheduleList = ({ refresh }: { refresh: number }) => {
     return types[type] || type;
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
   const executeManually = async (schedule: Schedule) => {
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateStrYYYYMMDD = `${year}${month}${day}`;
+
+      let dataInicial = dateStrYYYYMMDD;
+      let dataFinal = dateStrYYYYMMDD;
+
+      if (schedule.report_type === 'monthly_sales') {
+        const firstDay = `${year}${month}01`;
+        const lastDayOfMonth = new Date(year, today.getMonth() + 1, 0);
+        const lastDay = `${year}${month}${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
+        dataInicial = firstDay;
+        dataFinal = lastDay;
+      }
       
-      // Buscar dados de vendas
-      const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
-        body: {
-          dataInicial: today,
-          dataFinal: today,
-          empresasOrigem: schedule.empresas_origem
-        }
-      });
-
-      if (salesError) throw salesError;
-
       // Processar insights
       const { data: insights, error: insightsError } = await supabase.functions.invoke('process-insights', {
         body: {
-          dataInicial: today,
-          dataFinal: today,
+          dataInicial,
+          dataFinal,
           empresasOrigem: schedule.empresas_origem,
           reportType: schedule.report_type
         }
@@ -139,17 +150,31 @@ export const NotificationScheduleList = ({ refresh }: { refresh: number }) => {
 
       // Formatar mensagem
       let message = `📊 *Relatório: ${schedule.name}* (TESTE MANUAL)\n\n`;
-      message += `📅 ${new Date().toLocaleDateString('pt-BR')}\n\n`;
       
-      Object.entries(insights.data || {}).forEach(([store, data]: [string, any]) => {
-        message += `🏪 *${store}*\n`;
-        Object.entries(data).forEach(([key, value]: [string, any]) => {
-          message += `   ${key}: R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      if (insights.type === 'daily_sales') {
+        message += `📅 *Vendas Diárias* (${new Date().toLocaleDateString('pt-BR')})\n\n`;
+        Object.entries(insights.data || {}).forEach(([store, dates]: [string, any]) => {
+          const storeTotal = Object.values(dates).reduce((sum: number, val: any) => sum + val, 0);
+          message += `🏪 *${store}*: ${formatCurrency(storeTotal)}\n`;
         });
-        message += `\n`;
-      });
+      } else if (insights.type === 'monthly_sales') {
+        message += `📅 *Vendas Mensais* (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })})\n\n`;
+        Object.entries(insights.data || {}).forEach(([store, months]: [string, any]) => {
+          const storeTotal = Object.values(months).reduce((sum: number, val: any) => sum + val, 0);
+          message += `🏪 *${store}*: ${formatCurrency(storeTotal)}\n`;
+        });
+      } else if (insights.type === 'sales_by_type') {
+        message += `📅 *Vendas por Tipo de Produto* (${new Date().toLocaleDateString('pt-BR')})\n\n`;
+        Object.entries(insights.data || {}).forEach(([store, types]: [string, any]) => {
+          message += `🏪 *${store}*\n`;
+          Object.entries(types).forEach(([type, value]: [string, any]) => {
+            message += `  📦 ${type}: ${formatCurrency(value)}\n`;
+          });
+          message += '\n';
+        });
+      }
       
-      message += `💰 *Total Geral: R$ ${insights.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`;
+      message += `💰 *Total Geral: ${formatCurrency(insights.total || 0)}*`;
 
       // Enviar WhatsApp
       const { error: whatsappError } = await supabase.functions.invoke('send-whatsapp-notification', {

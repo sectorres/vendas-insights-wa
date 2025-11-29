@@ -116,22 +116,20 @@ serve(async (req) => {
           // Formatar mensagem
           let message = `📊 *Relatório: ${schedule.name}*\n\n`;
           
-          if (schedule.report_type === 'daily_sales') {
-            message += `📅 *Vendas Diárias* (${new Date().toLocaleDateString('pt-BR')})\n\n`;
+          if (insights.type === 'daily_sales') {
+            message += `📅 *Vendas Diárias* (${saoPauloTime.toLocaleDateString('pt-BR')})\n\n`;
             Object.entries(insights.data || {}).forEach(([store, dates]: [string, any]) => {
-              message += `🏪 *${store}*\n`;
               const storeTotal = Object.values(dates).reduce((sum: number, val: any) => sum + val, 0);
-              message += `💰 Total: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n`;
+              message += `🏪 *${store}*: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
             });
-          } else if (schedule.report_type === 'monthly_sales') {
-            message += `📅 *Vendas Mensais*\n\n`;
+          } else if (insights.type === 'monthly_sales') {
+            message += `📅 *Vendas Mensais* (${saoPauloTime.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })})\n\n`;
             Object.entries(insights.data || {}).forEach(([store, months]: [string, any]) => {
-              message += `🏪 *${store}*\n`;
               const storeTotal = Object.values(months).reduce((sum: number, val: any) => sum + val, 0);
-              message += `💰 Total: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n`;
+              message += `🏪 *${store}*: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
             });
-          } else if (schedule.report_type === 'sales_by_type') {
-            message += `📅 *Vendas por Tipo de Produto*\n\n`;
+          } else if (insights.type === 'sales_by_type') {
+            message += `📅 *Vendas por Tipo de Produto* (${saoPauloTime.toLocaleDateString('pt-BR')})\n\n`;
             Object.entries(insights.data || {}).forEach(([store, types]: [string, any]) => {
               message += `🏪 *${store}*\n`;
               Object.entries(types).forEach(([type, value]: [string, any]) => {
@@ -140,6 +138,8 @@ serve(async (req) => {
               message += '\n';
             });
           }
+
+          message += `💰 *Total Geral: R$ ${insights.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`;
 
           console.log(`Message formatted for ${schedule.name}, sending to ${schedule.phone_numbers.length} recipients...`);
 
