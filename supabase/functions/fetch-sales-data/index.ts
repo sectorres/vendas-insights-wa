@@ -26,10 +26,6 @@ function getSaoPauloDateYYYYMMDD(): string {
 
 // Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
 function convertToYYYYMMDD(dateString: string): string {
-  if (!dateString) { // Adicionada esta verificação
-    console.warn(`[convertToYYYYMMDD] Received empty or null dateString. Returning empty string.`);
-    return '';
-  }
   const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
