@@ -80,6 +80,7 @@ serve(async (req) => {
             console.log(`Daily report date: ${todayFormatted} (${day}/${month}/${year})`);
           }
           
+          console.log(`Invoking fetch-sales-data with dataInicial: ${dataInicial}, dataFinal: ${dataFinal}, empresasOrigem: ${schedule.empresas_origem}`);
           const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
             body: {
               dataInicial,
@@ -93,7 +94,7 @@ serve(async (req) => {
             throw salesError;
           }
 
-          console.log(`Fetched sales data for ${schedule.name}, processing insights...`);
+          console.log(`Fetched sales data for ${schedule.name}, processing insights with dataInicial: ${dataInicial}, dataFinal: ${dataFinal}, reportType: ${schedule.report_type}...`);
 
           // Processar insights
           const { data: insights, error: insightsError } = await supabase.functions.invoke('process-insights', {
