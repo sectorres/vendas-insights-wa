@@ -14,22 +14,31 @@ interface SalesDataRequest {
 
 // Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
 function convertToYYYYMMDD(dateString: string): string {
+  if (!dateString) return ''; // Handle null/undefined dateString
   const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
   if (parts.length === 3) {
-    return `${parts[2]}${parts[1]}${parts[0]}`; // YYYYMMDD
+    // Ensure parts are numbers before constructing
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`; // YYYYMMDD
+    }
   }
+  console.warn(`convertToYYYYMMDD: Could not parse dateString "${dateString}". Returning empty string.`);
   return ''; // Invalid format
 }
 
 // Helper function to convert YYYYMMDD to YYYY/MM/DD
 function formatDateToYYYYSlashMMSlashDD(dateYYYYMMDD: string): string {
-  if (dateYYYYMMDD.length === 8) {
+  if (dateYYYYMMDD && dateYYYYMMDD.length === 8) {
     const year = dateYYYYMMDD.substring(0, 4);
     const month = dateYYYYMMDD.substring(4, 6);
     const day = dateYYYYMMDD.substring(6, 8);
     return `${year}/${month}/${day}`;
   }
-  return dateYYYYMMDD; // Return as is if format is not YYYYMMDD
+  console.warn(`formatDateToYYYYSlashMMSlashDD: Invalid YYYYMMDD format "${dateYYYYMMDD}". Returning original string.`);
+  return dateYYYYMMDD;
 }
 
 serve(async (req) => {
@@ -40,10 +49,13 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
+    // Log the incoming dates from the frontend
+    console.log(`Edge Function received: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+
     const externalApiDataVendaInicial = formatDateToYYYYSlashMMSlashDD(dataInicial);
     const externalApiDataVendaFinal = formatDateToYYYYSlashMMSlashDD(dataFinal);
 
-    console.log('Fetching sales data for external API:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
+    console.log('Fetching sales data for external API with formatted dates:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
 
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
@@ -51,7 +63,7 @@ serve(async (req) => {
 
     let allRecords: any[] = [];
     let currentPage = 1;
-    const maxPagesSafetyLimit = 100; // Safety limit to prevent infinite loops
+    const maxPagesSafetyLimit = 100; 
 
     while (currentPage <= maxPagesSafetyLimit) {
       const requestBody: any = {
@@ -68,7 +80,7 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Fetching page ${currentPage} with request body sent to external API:`, JSON.stringify(requestBody, null, 2));
+      console.log(`Page ${currentPage}: Request body to external API:`, JSON.stringify(requestBody, null, 2));
 
       try {
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
@@ -82,33 +94,41 @@ serve(async (req) => {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`API Error on page ${currentPage}:`, response.status, errorText);
-          // If it's not the first page and we get an error, we can assume no more data
-          if (currentPage > 1) break; 
+          console.error(`Page ${currentPage}: API Error:`, response.status, errorText);
+          if (currentPage > 1) { 
+            console.log(`Stopping pagination due to API error on page ${currentPage}.`);
+            break;
+          }
           throw new Error(`API returned ${response.status}: ${errorText}`);
         }
 
         const pageData = await response.json();
-        console.log(`Page ${currentPage}: Raw data received from external API:`, JSON.stringify(pageData, null, 2));
+        let records = pageData.content || [];
+        const lastPage = pageData.lastPage || false;
+        const totalRecordsFromApi = pageData.total || 0; // This total might be for the entire dataset
+
+        console.log(`Page ${currentPage}: Raw records from external API: ${records.length}. Last page flag: ${lastPage}. API reported total: ${totalRecordsFromApi}`);
         
-        const records = pageData.content || [];
-        const lastPage = pageData.lastPage || false; // Use lastPage from API response
-        const totalRecordsFromApi = pageData.total || 0; // Use total from API response
-
-        console.log(`Page ${currentPage}: Fetched ${records.length} records. Total from API for this query: ${totalRecordsFromApi}. Last page: ${lastPage}`);
-
-        // Filter records by date within the edge function (internal fallback)
-        const filteredRecords = records.filter((sale: any) => {
+        // Internal filtering by date
+        const filteredRecords = records.filter((sale: any, index: number) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
-          return saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
+          const isMatch = saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
+          
+          // Log a sample of records being processed by the filter
+          if (index < 5 || Math.random() < 0.01) { // Log first 5 and 1% randomly
+            console.log(`Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
+          }
+          
+          return isMatch;
         });
 
-        console.log(`Page ${currentPage}: ${filteredRecords.length} records after internal filtering by date range (${dataInicial} to ${dataFinal})`);
+        console.log(`Page ${currentPage}: ${filteredRecords.length} records after internal filtering.`);
         
         allRecords = allRecords.concat(filteredRecords);
 
-        if (lastPage || records.length === 0) { // Break if it's the last page or no records were returned
-          console.log(`Stopping pagination: lastPage is ${lastPage} or records.length is ${records.length}`);
+        // Stop if it's the last page from the external API, or if no records were returned in this page
+        if (lastPage || records.length === 0) { 
+          console.log(`Stopping pagination: lastPage is ${lastPage} or raw records.length is ${records.length}.`);
           break;
         }
         
@@ -116,12 +136,11 @@ serve(async (req) => {
         
       } catch (error) {
         console.error(`Error during fetch for page ${currentPage}:`, error);
-        // If an error occurs, stop fetching further pages
         break;
       }
     }
 
-    console.log(`Total records fetched and internally filtered: ${allRecords.length} across ${currentPage - 1} pages`);
+    console.log(`Final result: Total records fetched and internally filtered: ${allRecords.length}`);
     
     const data = { content: allRecords };
 
@@ -129,7 +148,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in fetch-sales-data:', error);
+    console.error('Error in fetch-sales-data (top level):', error);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       {
