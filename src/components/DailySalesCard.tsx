@@ -19,32 +19,40 @@ export const DailySalesCard = () => {
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
       const day = String(today.getDate()).padStart(2, '0');
-      const dateStr = `${year}${month}${day}`; // Formato YYYYMMDD
+      const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da API
+      const dateStrDDMMYYYY = `${day}/${month}/${year}`; // Formato DD/MM/YYYY para filtrar a resposta
 
-      console.log("DailySalesCard: Fetching sales for date:", dateStr);
+      console.log("DailySalesCard: Solicitando vendas para a data (YYYYMMDD):", dateStrYYYYMMDD);
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
-          dataInicial: dateStr,
-          dataFinal: dateStr,
+          dataInicial: dateStrYYYYMMDD,
+          dataFinal: dateStrYYYYMMDD,
         }
       });
 
       if (error) throw error;
 
       if (data && data.content) {
-        const total = data.content.reduce((sum: number, sale: any) => {
+        console.log("DailySalesCard: Conteúdo bruto dos dados recebidos:", data.content);
+
+        // Filtrar os registros para garantir que o campo 'data' corresponda à data de hoje no formato DD/MM/YYYY
+        const filteredSales = data.content.filter((sale: any) => {
+          // O campo 'data' na resposta da API está no formato 'DD/MM/YYYY'
+          return sale.data === dateStrDDMMYYYY;
+        });
+
+        const total = filteredSales.reduce((sum: number, sale: any) => {
           return sum + (sale.valorProdutos || 0);
         }, 0);
         setTotalSales(total);
-        console.log("DailySalesCard: Total sales received:", total);
-        console.log("DailySalesCard: Raw data content:", data.content);
+        console.log("DailySalesCard: Vendas filtradas para hoje (DD/MM/YYYY):", dateStrDDMMYYYY, "Quantidade:", filteredSales.length, "Total:", total);
       } else {
         setTotalSales(0);
-        console.log("DailySalesCard: No sales data received.");
+        console.log("DailySalesCard: Nenhum dado de vendas recebido ou conteúdo vazio.");
       }
     } catch (error) {
-      console.error("Error fetching daily sales:", error);
+      console.error("Erro ao buscar vendas diárias:", error);
       toast({
         title: "Aviso",
         description: "Não foi possível carregar as vendas do dia",
