@@ -15,18 +15,12 @@ export const DailySalesCard = () => {
 
   const fetchDailySales = async () => {
     try {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da Edge Function
-
-      console.log("DailySalesCard: Solicitando vendas para a data (YYYYMMDD):", dateStrYYYYMMDD);
+      // Não passamos dataInicial e dataFinal, a Edge Function usará a data de São Paulo como padrão
+      console.log("DailySalesCard: Solicitando vendas para a data padrão da Edge Function.");
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
-          dataInicial: dateStrYYYYMMDD,
-          dataFinal: dateStrYYYYMMDD,
+          // dataInicial e dataFinal serão definidos pela Edge Function
           // empresasOrigem: ["50"], // Filtro por empresa removido
         }
       });

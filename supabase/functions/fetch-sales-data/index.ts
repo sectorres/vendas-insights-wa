@@ -7,17 +7,29 @@ const corsHeaders = {
 };
 
 interface SalesDataRequest {
-  dataInicial: string; // Expected YYYYMMDD
-  dataFinal: string;   // Expected YYYYMMDD
+  dataInicial?: string; // Optional: Expected YYYYMMDD
+  dataFinal?: string;   // Optional: Expected YYYYMMDD
   empresasOrigem?: string[]; // Códigos das lojas como strings, ex: ["1", "2", "3"]
+}
+
+// Helper function to get current date in São Paulo timezone as YYYYMMDD
+function getSaoPauloDateYYYYMMDD(): string {
+  const now = new Date();
+  const saoPauloTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const year = saoPauloTime.getFullYear();
+  const month = String(saoPauloTime.getMonth() + 1).padStart(2, '0');
+  const day = String(saoPauloTime.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
 }
 
 // Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
 function convertToYYYYMMDD(dateString: string): string {
-  if (!dateString) return ''; // Handle null/undefined dateString
+  if (!dateString) {
+    console.warn(`convertToYYYYMMDD: Received empty or null dateString. Returning empty string.`);
+    return '';
+  }
   const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
   if (parts.length === 3) {
-    // Ensure parts are numbers before constructing
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
@@ -25,7 +37,7 @@ function convertToYYYYMMDD(dateString: string): string {
       return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`; // YYYYMMDD
     }
   }
-  console.warn(`convertToYYYYMMDD: Could not parse dateString "${dateString}". Returning empty string.`);
+  console.warn(`convertToYYYYMMDD: Could not parse dateString "${dateString}" into DD/MM/YYYY format. Returning empty string.`);
   return ''; // Invalid format
 }
 
@@ -47,10 +59,17 @@ serve(async (req) => {
   }
 
   try {
-    const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
+    let { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
-    // Log the incoming dates from the frontend
-    console.log(`Edge Function received: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+    // If dataInicial and dataFinal are not provided, default to today in São Paulo timezone
+    if (!dataInicial || !dataFinal) {
+      const todaySaoPaulo = getSaoPauloDateYYYYMMDD();
+      dataInicial = todaySaoPaulo;
+      dataFinal = todaySaoPaulo;
+      console.log(`Defaulting to São Paulo date: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+    } else {
+      console.log(`Edge Function received: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+    }
 
     const externalApiDataVendaInicial = formatDateToYYYYSlashMMSlashDD(dataInicial);
     const externalApiDataVendaFinal = formatDateToYYYYSlashMMSlashDD(dataFinal);
@@ -105,7 +124,7 @@ serve(async (req) => {
         const pageData = await response.json();
         let records = pageData.content || [];
         const lastPage = pageData.lastPage || false;
-        const totalRecordsFromApi = pageData.total || 0; // This total might be for the entire dataset
+        const totalRecordsFromApi = pageData.total || 0; 
 
         console.log(`Page ${currentPage}: Raw records from external API: ${records.length}. Last page flag: ${lastPage}. API reported total: ${totalRecordsFromApi}`);
         
@@ -114,8 +133,7 @@ serve(async (req) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
           const isMatch = saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
           
-          // Log a sample of records being processed by the filter
-          if (index < 5 || Math.random() < 0.01) { // Log first 5 and 1% randomly
+          if (index < 5 || Math.random() < 0.01) { 
             console.log(`Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
           }
           
@@ -126,7 +144,6 @@ serve(async (req) => {
         
         allRecords = allRecords.concat(filteredRecords);
 
-        // Stop if it's the last page from the external API, or if no records were returned in this page
         if (lastPage || records.length === 0) { 
           console.log(`Stopping pagination: lastPage is ${lastPage} or raw records.length is ${records.length}.`);
           break;

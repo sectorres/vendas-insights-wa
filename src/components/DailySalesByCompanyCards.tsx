@@ -30,18 +30,12 @@ export const DailySalesByCompanyCards = () => {
 
   const fetchDailySalesByCompany = async () => {
     try {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da Edge Function
-
-      console.log("DailySalesByCompanyCards: Solicitando vendas para a data (YYYYMMDD):", dateStrYYYYMMDD);
+      // Não passamos dataInicial e dataFinal, a Edge Function usará a data de São Paulo como padrão
+      console.log("DailySalesByCompanyCards: Solicitando vendas para a data padrão da Edge Function.");
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
-          dataInicial: dateStrYYYYMMDD,
-          dataFinal: dateStrYYYYMMDD,
+          // dataInicial e dataFinal serão definidos pela Edge Function
         }
       });
 
@@ -50,18 +44,13 @@ export const DailySalesByCompanyCards = () => {
       if (data && data.content) {
         console.log("DailySalesByCompanyCards: Conteúdo bruto dos dados recebidos da Edge Function:", data.content);
 
-        const filteredSales = data.content.filter((sale: any) => {
-          const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
-          console.log(`DailySalesByCompanyCards: Filtrando venda - Data da Venda (raw): "${sale.dataVenda}", Convertida YYYYMMDD: "${saleDateYYYYMMDD}", Data Alvo: "${dateStrYYYYMMDD}"`);
-          return saleDateYYYYMMDD === dateStrYYYYMMDD;
-        });
-
-        console.log(`DailySalesByCompanyCards: ${filteredSales.length} vendas após filtragem para a data ${dateStrYYYYMMDD}.`);
-
+        // A filtragem por data agora é feita na Edge Function se dataInicial/dataFinal não forem passados.
+        // Se forem passados, a Edge Function já filtra.
+        // Portanto, aqui, apenas agregamos os dados já filtrados.
         const salesByCompanyCode: { [code: number]: number } = {};
         const companyNames: { [code: number]: string } = {};
 
-        filteredSales.forEach((sale: any, index: number) => {
+        data.content.forEach((sale: any, index: number) => {
           const companyCode = sale.empresaOrigem?.codigo;
           const companyName = sale.empresaOrigem?.nome || `Empresa ${companyCode || 'Desconhecida'}`;
           const value = sale.valorProdutos || 0;
@@ -73,9 +62,9 @@ export const DailySalesByCompanyCards = () => {
               salesByCompanyCode[companyCode] = 0;
             }
             salesByCompanyCode[companyCode] += value;
-            companyNames[companyCode] = companyName; // Armazena o nome para exibição
+            companyNames[companyCode] = companyName; 
           } else {
-            console.warn(`DailySalesByCompanyCards: Venda ${index} sem código de empresa definido após filtragem:`, sale);
+            console.warn(`DailySalesByCompanyCards: Venda ${index} sem código de empresa definido:`, sale);
           }
         });
 
