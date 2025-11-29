@@ -107,8 +107,17 @@ serve(async (req) => {
       const day = dataInicial.substring(6, 8);
       const targetDate = `${day}/${month}/${year}`;
       
-      filteredRecords = allRecords.filter(record => record.data === targetDate);
-      console.log(`Filtered to ${filteredRecords.length} records for data ${targetDate}`);
+      console.log(`fetch-sales-data: Applying single-day filter for target date: ${targetDate}`);
+      const initialCount = allRecords.length;
+      filteredRecords = allRecords.filter(record => {
+        const recordDate = typeof record.data === 'string' ? record.data.split(' ')[0] : ''; // Considera apenas a parte da data
+        if (recordDate !== targetDate) {
+          console.log(`fetch-sales-data: Skipping record with date "${recordDate}" as it does not match target "${targetDate}"`);
+          return false;
+        }
+        return true;
+      });
+      console.log(`fetch-sales-data: Filtered from ${initialCount} to ${filteredRecords.length} records for data ${targetDate}`);
     }
     
     const data = { content: filteredRecords };
