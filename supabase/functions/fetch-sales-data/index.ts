@@ -12,6 +12,15 @@ interface SalesDataRequest {
   empresasOrigem?: string[]; // Códigos das lojas como strings, ex: ["1", "2", "3"]
 }
 
+// Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
+function convertToYYYYMMDD(dateString: string): string {
+  const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
+  if (parts.length === 3) {
+    return `${parts[2]}${parts[1]}${parts[0]}`; // YYYYMMDD
+  }
+  return ''; // Invalid format
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,16 +83,24 @@ serve(async (req) => {
 
         const pageData = await response.json();
         console.log(`Page ${currentPage}: Raw data received from external API:`, JSON.stringify(pageData, null, 2));
-        const records = pageData.content || [];
+        let records = pageData.content || [];
         
         console.log(`Page ${currentPage}: Fetched ${records.length} records`);
+
+        // Filter records by date within the edge function
+        const filteredRecords = records.filter((sale: any) => {
+          const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
+          return saleDateYYYYMMDD >= externalApiDataVendaInicial && saleDateYYYYMMDD <= externalApiDataVendaFinal;
+        });
+
+        console.log(`Page ${currentPage}: ${filteredRecords.length} records after filtering by date range (${externalApiDataVendaInicial} to ${externalApiDataVendaFinal})`);
         
-        if (records.length === 0) {
-          console.log('No more records found');
+        if (records.length === 0) { // Check original records length for pagination break
+          console.log('No more records found from external API for this page.');
           break;
         }
         
-        allRecords = allRecords.concat(records);
+        allRecords = allRecords.concat(filteredRecords);
         currentPage++;
         
       } catch (error) {
@@ -96,7 +113,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Total records fetched: ${allRecords.length} across ${currentPage - 1} pages`);
+    console.log(`Total records fetched and filtered: ${allRecords.length} across ${currentPage - 1} pages`);
     
     const data = { content: allRecords };
 
