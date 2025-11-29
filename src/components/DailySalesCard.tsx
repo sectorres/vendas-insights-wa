@@ -19,8 +19,7 @@ export const DailySalesCard = () => {
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
       const day = String(today.getDate()).padStart(2, '0');
-      const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da API
-      const dateStrDDMMYYYY = `${day}/${month}/${year}`; // Formato DD/MM/YYYY para filtrar a resposta
+      const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da Edge Function
 
       console.log("DailySalesCard: Solicitando vendas para a data (YYYYMMDD):", dateStrYYYYMMDD);
 
@@ -34,19 +33,16 @@ export const DailySalesCard = () => {
       if (error) throw error;
 
       if (data && data.content) {
-        console.log("DailySalesCard: Conteúdo bruto dos dados recebidos:", data.content);
+        console.log("DailySalesCard: Conteúdo bruto dos dados recebidos da Edge Function:", data.content);
 
-        // Filtrar os registros para garantir que o campo 'dataVenda' corresponda à data de hoje no formato DD/MM/YYYY
-        const filteredSales = data.content.filter((sale: any) => {
-          // O campo 'dataVenda' na resposta da API está no formato 'DD/MM/YYYY'
-          return sale.dataVenda === dateStrDDMMYYYY;
-        });
-
-        const total = filteredSales.reduce((sum: number, sale: any) => {
+        // Removendo o filtro de data do lado do cliente.
+        // A Edge Function 'fetch-sales-data' agora é responsável por retornar
+        // apenas os registros cuja 'dataVenda' corresponde à data solicitada.
+        const total = data.content.reduce((sum: number, sale: any) => {
           return sum + (sale.valorProdutos || 0);
         }, 0);
         setTotalSales(total);
-        console.log("DailySalesCard: Vendas filtradas para hoje (DD/MM/YYYY):", dateStrDDMMYYYY, "Quantidade:", filteredSales.length, "Total:", total);
+        console.log("DailySalesCard: Total de vendas somadas (sem filtro client-side):", total);
       } else {
         setTotalSales(0);
         console.log("DailySalesCard: Nenhum dado de vendas recebido ou conteúdo vazio.");

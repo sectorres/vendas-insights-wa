@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 interface SalesDataRequest {
-  dataInicial: string;
-  dataFinal: string;
+  dataInicial: string; // Expected YYYYMMDD
+  dataFinal: string;   // Expected YYYYMMDD
   empresasOrigem?: string[]; // Códigos das lojas como strings, ex: ["1", "2", "3"]
 }
 
@@ -20,7 +20,18 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
-    console.log('Fetching sales data:', { dataInicial, dataFinal, empresasOrigem });
+    // Convert YYYYMMDD to YYYY/MM/DD for the external API
+    const formatToExternalApiDate = (dateStr: string) => {
+      const year = dateStr.substring(0, 4);
+      const month = dateStr.substring(4, 6);
+      const day = dateStr.substring(6, 8);
+      return `${year}/${month}/${day}`;
+    };
+
+    const externalApiDataInicial = formatToExternalApiDate(dataInicial);
+    const externalApiDataFinal = formatToExternalApiDate(dataFinal);
+
+    console.log('Fetching sales data for external API:', { externalApiDataInicial, externalApiDataFinal, empresasOrigem });
 
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
@@ -35,10 +46,12 @@ serve(async (req) => {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
-        dataInicial,
-        dataFinal,
-        dataVendaInicial: dataInicial,
-        dataVendaFinal: dataFinal,
+        // Usar os campos dataVendaInicial e dataVendaFinal com o formato YYYY/MM/DD
+        dataVendaInicial: externalApiDataInicial,
+        dataVendaFinal: externalApiDataFinal,
+        // Manter dataInicial e dataFinal também no formato YYYY/MM/DD, caso a API use eles como fallback
+        dataInicial: externalApiDataInicial,
+        dataFinal: externalApiDataFinal,
         incluirCanceladas: "NAO",
         mostraRentabilidade: "NAO",
         mostraQuestionario: "N"
@@ -48,7 +61,7 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Fetching page ${currentPage}`);
+      console.log(`Fetching page ${currentPage} with request body:`, requestBody);
 
       try {
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
@@ -98,7 +111,6 @@ serve(async (req) => {
 
     console.log(`Total records fetched: ${allRecords.length} across ${currentPage - 1} pages`);
     
-    // Removendo a filtragem interna aqui, confiando que a API externa já filtrou pelos parâmetros dataInicial e dataFinal
     const data = { content: allRecords };
 
     return new Response(JSON.stringify(data), {
