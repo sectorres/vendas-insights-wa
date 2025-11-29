@@ -85,14 +85,17 @@ serve(async (req) => {
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
     
-    if (password === undefined) {
-      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is UNDEFINED!');
-      throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
-    } else if (password === null) {
-      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is NULL!');
-      throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
-    } else if (password === '') {
-      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is EMPTY STRING!');
+    // Adicionando logs de depuração mais detalhados
+    console.log(`[fetch-sales-data] Debugging password:
+      - Is undefined: ${password === undefined}
+      - Is null: ${password === null}
+      - Is empty string: ${password === ''}
+      - Length: ${password?.length ?? 'N/A'}
+      - Trimmed length: ${password?.trim().length ?? 'N/A'}
+    `);
+
+    if (password === undefined || password === null || password === '') {
+      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is NOT set or is empty!');
       throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
     }
     console.log(`[fetch-sales-data] TORRES_CABRAL_PASSWORD environment variable is successfully retrieved. Length: ${password.length}`);
