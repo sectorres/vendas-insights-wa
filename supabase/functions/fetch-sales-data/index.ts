@@ -19,7 +19,9 @@ function getSaoPauloDateYYYYMMDD(): string {
   const year = saoPauloTime.getFullYear();
   const month = String(saoPauloTime.getMonth() + 1).padStart(2, '0');
   const day = String(saoPauloTime.getDate()).padStart(2, '0');
-  return `${year}${month}${day}`;
+  const formattedDate = `${year}${month}${day}`;
+  console.log(`getSaoPauloDateYYYYMMDD: Calculated São Paulo date: ${formattedDate}`);
+  return formattedDate;
 }
 
 // Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
@@ -34,7 +36,9 @@ function convertToYYYYMMDD(dateString: string): string {
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`; // YYYYMMDD
+      const convertedDate = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`; // YYYYMMDD
+      console.log(`convertToYYYYMMDD: Converted "${dateString}" to "${convertedDate}"`);
+      return convertedDate;
     }
   }
   console.warn(`convertToYYYYMMDD: Could not parse dateString "${dateString}" into DD/MM/YYYY format. Returning empty string.`);
@@ -47,7 +51,9 @@ function formatDateToYYYYSlashMMSlashDD(dateYYYYMMDD: string): string {
     const year = dateYYYYMMDD.substring(0, 4);
     const month = dateYYYYMMDD.substring(4, 6);
     const day = dateYYYYMMDD.substring(6, 8);
-    return `${year}/${month}/${day}`;
+    const formattedDate = `${year}/${month}/${day}`;
+    console.log(`formatDateToYYYYSlashMMSlashDD: Converted "${dateYYYYMMDD}" to "${formattedDate}"`);
+    return formattedDate;
   }
   console.warn(`formatDateToYYYYSlashMMSlashDD: Invalid YYYYMMDD format "${dateYYYYMMDD}". Returning original string.`);
   return dateYYYYMMDD;
@@ -133,9 +139,7 @@ serve(async (req) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
           const isMatch = saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
           
-          if (index < 5 || Math.random() < 0.01) { 
-            console.log(`Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
-          }
+          console.log(`Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
           
           return isMatch;
         });
