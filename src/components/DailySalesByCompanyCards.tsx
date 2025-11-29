@@ -44,19 +44,26 @@ export const DailySalesByCompanyCards = () => {
         const salesByCompanyCode: { [code: number]: number } = {};
         const companyNames: { [code: number]: string } = {};
 
-        data.content.forEach((sale: any) => {
+        data.content.forEach((sale: any, index: number) => {
           const companyCode = sale.empresaOrigem?.codigo;
           const companyName = sale.empresaOrigem?.nome || `Empresa ${companyCode || 'Desconhecida'}`;
           const value = sale.valorProdutos || 0;
           
+          console.log(`DailySalesByCompanyCards: Processando venda ${index}: Código da Empresa: ${companyCode}, Nome da Empresa: ${companyName}, Valor: ${value}`);
+
           if (companyCode !== undefined) {
             if (!salesByCompanyCode[companyCode]) {
               salesByCompanyCode[companyCode] = 0;
             }
             salesByCompanyCode[companyCode] += value;
             companyNames[companyCode] = companyName; // Armazena o nome para exibição
+          } else {
+            console.warn(`DailySalesByCompanyCards: Venda ${index} sem código de empresa definido:`, sale);
           }
         });
+
+        console.log("DailySalesByCompanyCards: salesByCompanyCode após agregação:", salesByCompanyCode);
+        console.log("DailySalesByCompanyCards: companyNames após agregação:", companyNames);
 
         const formattedSales = Object.entries(salesByCompanyCode).map(([code, total]) => ({
           code: parseInt(code, 10),
@@ -64,7 +71,7 @@ export const DailySalesByCompanyCards = () => {
           total,
         }));
         setCompanySales(formattedSales);
-        console.log("DailySalesByCompanyCards: Vendas por empresa (agrupadas por código):", formattedSales);
+        console.log("DailySalesByCompanyCards: Vendas por empresa (agrupadas por código) para renderização:", formattedSales);
       } else {
         setCompanySales([]);
         console.log("DailySalesByCompanyCards: Nenhum dado de vendas recebido ou conteúdo vazio.");
