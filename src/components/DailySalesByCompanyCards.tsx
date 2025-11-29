@@ -10,6 +10,15 @@ interface CompanySales {
   total: number;
 }
 
+// Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
+function convertToYYYYMMDD(dateString: string): string {
+  const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
+  if (parts.length === 3) {
+    return `${parts[2]}${parts[1]}${parts[0]}`; // YYYYMMDD
+  }
+  return ''; // Invalid format
+}
+
 export const DailySalesByCompanyCards = () => {
   const { toast } = useToast();
   const [companySales, setCompanySales] = useState<CompanySales[]>([]);
@@ -41,15 +50,23 @@ export const DailySalesByCompanyCards = () => {
       if (data && data.content) {
         console.log("DailySalesByCompanyCards: Conteúdo bruto dos dados recebidos da Edge Function:", data.content);
 
+        const filteredSales = data.content.filter((sale: any) => {
+          const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
+          console.log(`DailySalesByCompanyCards: Filtrando venda - Data da Venda (raw): "${sale.dataVenda}", Convertida YYYYMMDD: "${saleDateYYYYMMDD}", Data Alvo: "${dateStrYYYYMMDD}"`);
+          return saleDateYYYYMMDD === dateStrYYYYMMDD;
+        });
+
+        console.log(`DailySalesByCompanyCards: ${filteredSales.length} vendas após filtragem para a data ${dateStrYYYYMMDD}.`);
+
         const salesByCompanyCode: { [code: number]: number } = {};
         const companyNames: { [code: number]: string } = {};
 
-        data.content.forEach((sale: any, index: number) => {
+        filteredSales.forEach((sale: any, index: number) => {
           const companyCode = sale.empresaOrigem?.codigo;
           const companyName = sale.empresaOrigem?.nome || `Empresa ${companyCode || 'Desconhecida'}`;
           const value = sale.valorProdutos || 0;
           
-          console.log(`DailySalesByCompanyCards: Processando venda ${index}: Código da Empresa: ${companyCode}, Nome da Empresa: ${companyName}, Valor: ${value}`);
+          console.log(`DailySalesByCompanyCards: Agregando venda ${index}: Código da Empresa: ${companyCode}, Nome da Empresa: ${companyName}, Valor: ${value}`);
 
           if (companyCode !== undefined) {
             if (!salesByCompanyCode[companyCode]) {
@@ -58,7 +75,7 @@ export const DailySalesByCompanyCards = () => {
             salesByCompanyCode[companyCode] += value;
             companyNames[companyCode] = companyName; // Armazena o nome para exibição
           } else {
-            console.warn(`DailySalesByCompanyCards: Venda ${index} sem código de empresa definido:`, sale);
+            console.warn(`DailySalesByCompanyCards: Venda ${index} sem código de empresa definido após filtragem:`, sale);
           }
         });
 
