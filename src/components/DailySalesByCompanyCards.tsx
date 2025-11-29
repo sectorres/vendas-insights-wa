@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface CompanySales {
+  code: number;
   name: string;
   total: number;
 }
@@ -40,24 +41,30 @@ export const DailySalesByCompanyCards = () => {
       if (data && data.content) {
         console.log("DailySalesByCompanyCards: Conteúdo bruto dos dados recebidos da Edge Function:", data.content);
 
-        const salesByCompany: { [key: string]: number } = {};
+        const salesByCompanyCode: { [code: number]: number } = {};
+        const companyNames: { [code: number]: string } = {};
 
         data.content.forEach((sale: any) => {
-          const companyName = sale.empresaOrigem?.nome || `Empresa ${sale.empresaOrigem?.codigo || 'Desconhecida'}`;
+          const companyCode = sale.empresaOrigem?.codigo;
+          const companyName = sale.empresaOrigem?.nome || `Empresa ${companyCode || 'Desconhecida'}`;
           const value = sale.valorProdutos || 0;
           
-          if (!salesByCompany[companyName]) {
-            salesByCompany[companyName] = 0;
+          if (companyCode !== undefined) {
+            if (!salesByCompanyCode[companyCode]) {
+              salesByCompanyCode[companyCode] = 0;
+            }
+            salesByCompanyCode[companyCode] += value;
+            companyNames[companyCode] = companyName; // Armazena o nome para exibição
           }
-          salesByCompany[companyName] += value;
         });
 
-        const formattedSales = Object.entries(salesByCompany).map(([name, total]) => ({
-          name,
+        const formattedSales = Object.entries(salesByCompanyCode).map(([code, total]) => ({
+          code: parseInt(code, 10),
+          name: companyNames[parseInt(code, 10)],
           total,
         }));
         setCompanySales(formattedSales);
-        console.log("DailySalesByCompanyCards: Vendas por empresa:", formattedSales);
+        console.log("DailySalesByCompanyCards: Vendas por empresa (agrupadas por código):", formattedSales);
       } else {
         setCompanySales([]);
         console.log("DailySalesByCompanyCards: Nenhum dado de vendas recebido ou conteúdo vazio.");
@@ -115,14 +122,14 @@ export const DailySalesByCompanyCards = () => {
 
   return (
     <>
-      {companySales.map((company, index) => (
-        <Card key={index} className="p-6 hover:shadow-lg transition-shadow">
+      {companySales.map((company) => (
+        <Card key={company.code} className="p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
               <TrendingUp className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{company.name} (Hoje)</p>
+              <p className="text-sm text-muted-foreground">{company.name} (Cód: {company.code})</p>
               <p className="text-2xl font-bold text-foreground">
                 {formatCurrency(company.total)}
               </p>

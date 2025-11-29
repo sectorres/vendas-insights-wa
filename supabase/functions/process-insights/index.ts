@@ -108,7 +108,7 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
     const valueWithoutFreight = sale.valorProdutos;
     const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
 
@@ -147,7 +147,7 @@ function processMonthlySales(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
     const valueWithoutFreight = sale.valorProdutos;
     const month = typeof sale.dataVenda === 'string' ? sale.dataVenda.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
 
@@ -179,7 +179,7 @@ function processSalesByType(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
+    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`; // Usar nome e código
 
     if (!salesByStoreAndType[storeName]) {
       salesByStoreAndType[storeName] = {};
