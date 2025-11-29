@@ -21,7 +21,7 @@ function convertToYYYYMMDD(dateString: string): string {
   return ''; // Invalid format
 }
 
-// New helper function to convert YYYYMMDD to YYYY/MM/DD
+// Helper function to convert YYYYMMDD to YYYY/MM/DD
 function formatDateToYYYYSlashMMSlashDD(dateYYYYMMDD: string): string {
   if (dateYYYYMMDD.length === 8) {
     const year = dateYYYYMMDD.substring(0, 4);
@@ -40,7 +40,6 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
-    // Converter para o formato YYYY/MM/DD para a API externa
     const externalApiDataVendaInicial = formatDateToYYYYSlashMMSlashDD(dataInicial);
     const externalApiDataVendaFinal = formatDateToYYYYSlashMMSlashDD(dataFinal);
 
@@ -52,9 +51,9 @@ serve(async (req) => {
 
     let allRecords: any[] = [];
     let currentPage = 1;
-    const maxPages = 100; // Limite de segurança
+    const maxPagesSafetyLimit = 100; // Safety limit to prevent infinite loops
 
-    while (currentPage <= maxPages) {
+    while (currentPage <= maxPagesSafetyLimit) {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
@@ -82,48 +81,47 @@ serve(async (req) => {
         });
 
         if (!response.ok) {
-          if (currentPage > 1) {
-            console.log(`No more pages after page ${currentPage - 1}`);
-            break;
-          }
           const errorText = await response.text();
-          console.error('API Error on first page:', response.status, errorText);
+          console.error(`API Error on page ${currentPage}:`, response.status, errorText);
+          // If it's not the first page and we get an error, we can assume no more data
+          if (currentPage > 1) break; 
           throw new Error(`API returned ${response.status}: ${errorText}`);
         }
 
         const pageData = await response.json();
         console.log(`Page ${currentPage}: Raw data received from external API:`, JSON.stringify(pageData, null, 2));
-        let records = pageData.content || [];
         
-        console.log(`Page ${currentPage}: Fetched ${records.length} records`);
+        const records = pageData.content || [];
+        const lastPage = pageData.lastPage || false; // Use lastPage from API response
+        const totalRecordsFromApi = pageData.total || 0; // Use total from API response
 
-        // Filter records by date within the edge function
+        console.log(`Page ${currentPage}: Fetched ${records.length} records. Total from API for this query: ${totalRecordsFromApi}. Last page: ${lastPage}`);
+
+        // Filter records by date within the edge function (internal fallback)
         const filteredRecords = records.filter((sale: any) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
-          return saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal; // Use original YYYYMMDD for internal filtering
+          return saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
         });
 
-        console.log(`Page ${currentPage}: ${filteredRecords.length} records after filtering by date range (${dataInicial} to ${dataFinal})`);
+        console.log(`Page ${currentPage}: ${filteredRecords.length} records after internal filtering by date range (${dataInicial} to ${dataFinal})`);
         
-        if (records.length === 0) { // Check original records length for pagination break
-          console.log('No more records found from external API for this page.');
+        allRecords = allRecords.concat(filteredRecords);
+
+        if (lastPage || records.length === 0) { // Break if it's the last page or no records were returned
+          console.log(`Stopping pagination: lastPage is ${lastPage} or records.length is ${records.length}`);
           break;
         }
         
-        allRecords = allRecords.concat(filteredRecords);
         currentPage++;
         
       } catch (error) {
-        if (currentPage > 1) {
-          console.log(`Error on page ${currentPage}, stopping. Error:`, error);
-          break;
-        } else {
-          throw error;
-        }
+        console.error(`Error during fetch for page ${currentPage}:`, error);
+        // If an error occurs, stop fetching further pages
+        break;
       }
     }
 
-    console.log(`Total records fetched and filtered: ${allRecords.length} across ${currentPage - 1} pages`);
+    console.log(`Total records fetched and internally filtered: ${allRecords.length} across ${currentPage - 1} pages`);
     
     const data = { content: allRecords };
 
