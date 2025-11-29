@@ -56,31 +56,24 @@ serve(async (req) => {
           let dataInicial: string;
           let dataFinal: string;
           
-          // Formatar data de São Paulo no formato YYYYMMDD
-          const year = saoPauloTime.getFullYear();
-          const month = String(saoPauloTime.getMonth() + 1).padStart(2, '0');
-          const day = String(saoPauloTime.getDate()).padStart(2, '0');
-          const todayFormatted = `${year}${month}${day}`;
-          
           if (schedule.report_type === 'monthly_sales') {
             // Para vendas mensais: primeiro ao último dia do mês corrente
-            const firstDay = `${year}${month}01`;
-            const lastDayOfMonth = new Date(year, saoPauloTime.getMonth() + 1, 0);
-            const lastDay = `${year}${month}${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
+            const firstDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth(), 1);
+            const lastDayOfMonth = new Date(saoPauloTime.getFullYear(), saoPauloTime.getMonth() + 1, 0);
             
-            dataInicial = firstDay;
-            dataFinal = lastDay;
+            dataInicial = firstDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
+            dataFinal = lastDayOfMonth.toISOString().split('T')[0].replace(/-/g, '');
             
             console.log(`Monthly report dates: ${dataInicial} to ${dataFinal}`);
           } else {
-            // Para vendas diárias: apenas o dia corrente
-            dataInicial = todayFormatted;
-            dataFinal = todayFormatted;
+            // Para vendas diárias: do início do dia até o momento atual
+            const today = saoPauloTime.toISOString().split('T')[0].replace(/-/g, '');
+            dataInicial = today;
+            dataFinal = today;
             
-            console.log(`Daily report date: ${todayFormatted} (${day}/${month}/${year})`);
+            console.log(`Daily report date: ${today}`);
           }
           
-          console.log(`Invoking fetch-sales-data with dataInicial: ${dataInicial}, dataFinal: ${dataFinal}, empresasOrigem: ${schedule.empresas_origem}`);
           const { data: salesData, error: salesError } = await supabase.functions.invoke('fetch-sales-data', {
             body: {
               dataInicial,
@@ -94,7 +87,7 @@ serve(async (req) => {
             throw salesError;
           }
 
-          console.log(`Fetched sales data for ${schedule.name}, processing insights with dataInicial: ${dataInicial}, dataFinal: ${dataFinal}, reportType: ${schedule.report_type}...`);
+          console.log(`Fetched sales data for ${schedule.name}, processing insights...`);
 
           // Processar insights
           const { data: insights, error: insightsError } = await supabase.functions.invoke('process-insights', {
@@ -116,20 +109,22 @@ serve(async (req) => {
           // Formatar mensagem
           let message = `📊 *Relatório: ${schedule.name}*\n\n`;
           
-          if (insights.type === 'daily_sales') {
-            message += `📅 *Vendas Diárias* (${saoPauloTime.toLocaleDateString('pt-BR')})\n\n`;
+          if (schedule.report_type === 'daily_sales') {
+            message += `📅 *Vendas Diárias* (${new Date().toLocaleDateString('pt-BR')})\n\n`;
             Object.entries(insights.data || {}).forEach(([store, dates]: [string, any]) => {
+              message += `🏪 *${store}*\n`;
               const storeTotal = Object.values(dates).reduce((sum: number, val: any) => sum + val, 0);
-              message += `🏪 *${store}*: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+              message += `💰 Total: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n`;
             });
-          } else if (insights.type === 'monthly_sales') {
-            message += `📅 *Vendas Mensais* (${saoPauloTime.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })})\n\n`;
+          } else if (schedule.report_type === 'monthly_sales') {
+            message += `📅 *Vendas Mensais*\n\n`;
             Object.entries(insights.data || {}).forEach(([store, months]: [string, any]) => {
+              message += `🏪 *${store}*\n`;
               const storeTotal = Object.values(months).reduce((sum: number, val: any) => sum + val, 0);
-              message += `🏪 *${store}*: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+              message += `💰 Total: R$ ${storeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n`;
             });
-          } else if (insights.type === 'sales_by_type') {
-            message += `📅 *Vendas por Tipo de Produto* (${saoPauloTime.toLocaleDateString('pt-BR')})\n\n`;
+          } else if (schedule.report_type === 'sales_by_type') {
+            message += `📅 *Vendas por Tipo de Produto*\n\n`;
             Object.entries(insights.data || {}).forEach(([store, types]: [string, any]) => {
               message += `🏪 *${store}*\n`;
               Object.entries(types).forEach(([type, value]: [string, any]) => {
@@ -138,8 +133,6 @@ serve(async (req) => {
               message += '\n';
             });
           }
-
-          message += `💰 *Total Geral: R$ ${insights.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`;
 
           console.log(`Message formatted for ${schedule.name}, sending to ${schedule.phone_numbers.length} recipients...`);
 

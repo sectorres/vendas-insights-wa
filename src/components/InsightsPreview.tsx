@@ -37,19 +37,10 @@ export const InsightsPreview = () => {
         .map(c => c.trim())
         .filter(c => c);
 
-      // Para relatórios diários, usar apenas a data final (dia corrente)
-      let dataInicial = formData.dataInicial.replace(/-/g, "");
-      let dataFinal = formData.dataFinal.replace(/-/g, "");
-      
-      if (formData.reportType === "daily_sales") {
-        // Forçar ambas as datas serem iguais ao dia selecionado em dataFinal
-        dataInicial = dataFinal;
-      }
-
       const { data, error } = await supabase.functions.invoke("process-insights", {
         body: {
-          dataInicial,
-          dataFinal,
+          dataInicial: formData.dataInicial.replace(/-/g, ""),
+          dataFinal: formData.dataFinal.replace(/-/g, ""),
           reportType: formData.reportType,
           empresasOrigem: empresasOrigemArray.length > 0 ? empresasOrigemArray : undefined,
         },
@@ -112,30 +103,16 @@ export const InsightsPreview = () => {
         .filter(p => p);
 
       // Formatar mensagem com os insights
-      let message = `📊 *Relatório de Vendas - Preview*\n\n`;
+      let message = `📊 *Relatório de Vendas*\n\n`;
+      message += `📅 Período: ${formData.dataInicial} a ${formData.dataFinal}\n\n`;
       
-      if (insights.type === 'daily_sales') {
-        message += `📅 *Vendas Diárias* (${new Date(formData.dataFinal).toLocaleDateString('pt-BR')})\n\n`;
-        Object.entries(insights.data || {}).forEach(([store, dates]: [string, any]) => {
-          const storeTotal = Object.values(dates).reduce((sum: number, val: any) => sum + val, 0);
-          message += `🏪 *${store}*: ${formatCurrency(storeTotal)}\n`;
+      Object.entries(insights.data || {}).forEach(([store, data]: [string, any]) => {
+        message += `🏪 *${store}*\n`;
+        Object.entries(data).forEach(([key, value]: [string, any]) => {
+          message += `   ${key}: ${formatCurrency(value)}\n`;
         });
-      } else if (insights.type === 'monthly_sales') {
-        message += `📅 *Vendas Mensais* (${new Date(formData.dataFinal).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })})\n\n`;
-        Object.entries(insights.data || {}).forEach(([store, months]: [string, any]) => {
-          const storeTotal = Object.values(months).reduce((sum: number, val: any) => sum + val, 0);
-          message += `🏪 *${store}*: ${formatCurrency(storeTotal)}\n`;
-        });
-      } else if (insights.type === 'sales_by_type') {
-        message += `📅 *Vendas por Tipo de Produto* (${new Date(formData.dataFinal).toLocaleDateString('pt-BR')})\n\n`;
-        Object.entries(insights.data || {}).forEach(([store, types]: [string, any]) => {
-          message += `🏪 *${store}*\n`;
-          Object.entries(types).forEach(([type, value]: [string, any]) => {
-            message += `  📦 ${type}: ${formatCurrency(value)}\n`;
-          });
-          message += '\n';
-        });
-      }
+        message += `\n`;
+      });
       
       message += `💰 *Total Geral: ${formatCurrency(insights.total || 0)}*`;
 

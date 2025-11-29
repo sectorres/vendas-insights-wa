@@ -14,8 +14,7 @@ interface SalesData {
   };
   valorProdutos: number;
   valorFrete: number;
-  data: string; // Data de emissão/processamento da nota
-  dataVenda: string; // Data real da venda (ex: DD/MM/YYYY HH:MM:SS ou DD/MM/YYYY)
+  data: string;
   produtos: Array<{
     tipo: string;
     valorLiquido: number;
@@ -37,35 +36,22 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem, reportType } = await req.json() as ProcessInsightsRequest;
 
-    console.log('Processing insights request:', { dataInicial, dataFinal, empresasOrigem, reportType });
+    console.log('Processing insights:', { dataInicial, dataFinal, reportType });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Buscar dados de vendas
-    console.log('Invoking fetch-sales-data with:', { dataInicial, dataFinal, empresasOrigem });
-    const { data: salesResponse, error: fetchSalesError } = await supabase.functions.invoke('fetch-sales-data', {
+    const { data: salesResponse } = await supabase.functions.invoke('fetch-sales-data', {
       body: { dataInicial, dataFinal, empresasOrigem }
     });
 
-    if (fetchSalesError) {
-      console.error('Error invoking fetch-sales-data:', fetchSalesError);
-      throw fetchSalesError;
-    }
-
     if (!salesResponse || !salesResponse.content) {
-      console.warn('No sales data content received from fetch-sales-data. Returning empty insights.');
-      // Return empty insights if no data
-      return new Response(JSON.stringify({ type: reportType, data: {}, total: 0 }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      throw new Error('Falha ao buscar dados de vendas');
     }
 
     const salesData: SalesData[] = salesResponse.content;
-    console.log(`Received ${salesData.length} sales records from fetch-sales-data.`);
-    // Log a sample of salesData to avoid overwhelming logs if it's huge
-    console.log('Sample sales data (first 5 records):', salesData.slice(0, 5)); 
 
     // Processar insights baseado no tipo de relatório
     let insights: any = {};
@@ -77,8 +63,6 @@ serve(async (req) => {
     } else if (reportType === 'sales_by_type') {
       insights = processSalesByType(salesData);
     }
-    
-    console.log('Final insights generated:', insights);
 
     return new Response(JSON.stringify(insights), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,46 +79,41 @@ serve(async (req) => {
   }
 });
 
-// Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
-function convertToYYYYMMDD(dateString: string): string {
-  const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
-  if (parts.length === 3) {
-    return `${parts[2]}${parts[1]}${parts[0]}`; // YYYYMMDD
-  }
-  return ''; // Invalid format
-}
-
-function processDailySales(salesData: SalesData[], targetDateYYYYMMDD: string) {
+function processDailySales(salesData: SalesData[], targetDate: string) {
   const salesByStoreAndDate: { [key: string]: { [date: string]: number } } = {};
   
-  console.log(`processDailySales: Target date for filtering (YYYYMMDD): ${targetDateYYYYMMDD}`);
+  // Converter targetDate de YYYYMMDD para DD/MM/YYYY para comparação
+  const year = targetDate.substring(0, 4);
+  const month = targetDate.substring(4, 6);
+  const day = targetDate.substring(6, 8);
+  const formattedTargetDate = `${day}/${month}/${year}`;
+  
+  console.log(`Filtering sales for date: ${formattedTargetDate}`);
 
   salesData.forEach(sale => {
-    const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
-    const valueWithoutFreight = sale.valorProdutos;
-    const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
-
-    console.log(`processDailySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Converted YYYYMMDD: "${saleDateYYYYMMDD}", Value: ${valueWithoutFreight}`);
-
-    if (saleDateYYYYMMDD !== targetDateYYYYMMDD) {
-      console.log(`processDailySales: Skipping sale from ${storeName} (Code: ${storeCodigo}) with date "${saleDateYYYYMMDD}" as it does not match target "${targetDateYYYYMMDD}"`);
+    const saleDate = sale.data;
+    
+    // Filtrar apenas vendas do dia específico
+    if (saleDate !== formattedTargetDate) {
       return;
     }
     
+    const storeCodigo = sale.empresaOrigem.codigo;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
+    const valueWithoutFreight = sale.valorProdutos;
+
     if (!salesByStoreAndDate[storeName]) {
       salesByStoreAndDate[storeName] = {};
     }
 
-    if (!salesByStoreAndDate[storeName][saleDateYYYYMMDD]) {
-      salesByStoreAndDate[storeName][saleDateYYYYMMDD] = 0;
+    if (!salesByStoreAndDate[storeName][saleDate]) {
+      salesByStoreAndDate[storeName][saleDate] = 0;
     }
 
-    salesByStoreAndDate[storeName][saleDateYYYYMMDD] += valueWithoutFreight;
-    console.log(`processDailySales: Added ${valueWithoutFreight} to ${storeName} for ${saleDateYYYYMMDD}. Current total: ${salesByStoreAndDate[storeName][saleDateYYYYMMDD]}`);
+    salesByStoreAndDate[storeName][saleDate] += valueWithoutFreight;
   });
   
-  console.log(`processDailySales: Final aggregated data for daily sales:`, salesByStoreAndDate);
+  console.log(`Filtered ${Object.keys(salesByStoreAndDate).length} stores with sales on ${formattedTargetDate}`);
 
   return {
     type: 'daily_sales',
@@ -150,30 +129,19 @@ function processMonthlySales(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
+    const month = sale.data.substring(3); // Pega MM/YYYY de DD/MM/YYYY
     const valueWithoutFreight = sale.valorProdutos;
-    
-    // Extract MM/YYYY from DD/MM/YYYY [HH:MM:SS]
-    const saleDateParts = sale.dataVenda.split(' ')[0].split('/');
-    const monthYYYY = saleDateParts.length === 3 ? `${saleDateParts[1]}/${saleDateParts[2]}` : '';
-
-    console.log(`processMonthlySales: Evaluating sale - Store: ${storeName} (Code: ${storeCodigo}), Sale Date (raw): "${sale.dataVenda}", Extracted Month: "${monthYYYY}", Value: ${valueWithoutFreight}`);
-
-    if (!monthYYYY) {
-      console.warn(`processMonthlySales: Skipping sale due to invalid month format for sale.dataVenda: "${sale.dataVenda}"`);
-      return;
-    }
 
     if (!salesByStoreAndMonth[storeName]) {
       salesByStoreAndMonth[storeName] = {};
     }
 
-    if (!salesByStoreAndMonth[storeName][monthYYYY]) {
-      salesByStoreAndMonth[storeName][monthYYYY] = 0;
+    if (!salesByStoreAndMonth[storeName][month]) {
+      salesByStoreAndMonth[storeName][month] = 0;
     }
 
-    salesByStoreAndMonth[storeName][monthYYYY] += valueWithoutFreight;
-    console.log(`processMonthlySales: Added ${valueWithoutFreight} to ${storeName} for ${monthYYYY}. Current total: ${salesByStoreAndMonth[storeName][monthYYYY]}`);
+    salesByStoreAndMonth[storeName][month] += valueWithoutFreight;
   });
 
   return {
@@ -190,7 +158,7 @@ function processSalesByType(salesData: SalesData[]) {
 
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
-    const storeName = `${sale.empresaOrigem.nome} (Cód: ${String(storeCodigo).padStart(2, '0')})`;
+    const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
 
     if (!salesByStoreAndType[storeName]) {
       salesByStoreAndType[storeName] = {};

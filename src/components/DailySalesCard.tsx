@@ -15,32 +15,26 @@ export const DailySalesCard = () => {
 
   const fetchDailySales = async () => {
     try {
-      // Não passamos dataInicial e dataFinal, a Edge Function usará a data de São Paulo como padrão
-      console.log("DailySalesCard: Solicitando vendas para a data padrão da Edge Function.");
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
-          // dataInicial e dataFinal serão definidos pela Edge Function
-          // empresasOrigem: ["50"], // Filtro por empresa removido
+          dataInicial: dateStr,
+          dataFinal: dateStr,
         }
       });
 
       if (error) throw error;
 
       if (data && data.content) {
-        console.log("DailySalesCard: Conteúdo bruto dos dados recebidos da Edge Function:", data.content);
-
         const total = data.content.reduce((sum: number, sale: any) => {
           return sum + (sale.valorProdutos || 0);
         }, 0);
         setTotalSales(total);
-        console.log("DailySalesCard: Total de vendas somadas:", total);
-      } else {
-        setTotalSales(0);
-        console.log("DailySalesCard: Nenhum dado de vendas recebido ou conteúdo vazio.");
       }
     } catch (error) {
-      console.error("Erro ao buscar vendas diárias:", error);
+      console.error("Error fetching daily sales:", error);
       toast({
         title: "Aviso",
         description: "Não foi possível carregar as vendas do dia",
