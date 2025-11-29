@@ -14,7 +14,8 @@ interface SalesData {
   };
   valorProdutos: number;
   valorFrete: number;
-  data: string;
+  data: string; // Data de emissão/processamento da nota
+  dataVenda: string; // Data real da venda
   produtos: Array<{
     tipo: string;
     valorLiquido: number;
@@ -91,11 +92,11 @@ function processDailySales(salesData: SalesData[], targetDate: string) {
   console.log(`processDailySales: Target date for filtering: ${formattedTargetDate}`);
 
   salesData.forEach(sale => {
-    // Ensure sale.data is a string and consider only the date part (DD/MM/YYYY)
-    const saleDate = typeof sale.data === 'string' ? sale.data.split(' ')[0] : '';
+    // Usar sale.dataVenda para filtrar vendas diárias
+    const saleDate = typeof sale.dataVenda === 'string' ? sale.dataVenda.split(' ')[0] : '';
 
     if (saleDate !== formattedTargetDate) {
-      console.log(`processDailySales: Skipping sale with date "${saleDate}" as it does not match target "${formattedTargetDate}"`);
+      console.log(`processDailySales: Skipping sale with dataVenda "${saleDate}" as it does not match target "${formattedTargetDate}"`);
       return;
     }
     
@@ -131,7 +132,8 @@ function processMonthlySales(salesData: SalesData[]) {
   salesData.forEach(sale => {
     const storeCodigo = sale.empresaOrigem.codigo;
     const storeName = `LOJA-${String(storeCodigo).padStart(2, '0')}`;
-    const month = typeof sale.data === 'string' ? sale.data.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
+    // Usar sale.dataVenda para vendas mensais
+    const month = typeof sale.dataVenda === 'string' ? sale.dataVenda.substring(3) : ''; // Pega MM/YYYY de DD/MM/YYYY
     const valueWithoutFreight = sale.valorProdutos;
 
     if (!salesByStoreAndMonth[storeName]) {

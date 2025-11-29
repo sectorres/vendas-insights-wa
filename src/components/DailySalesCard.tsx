@@ -36,10 +36,10 @@ export const DailySalesCard = () => {
       if (data && data.content) {
         console.log("DailySalesCard: Conteúdo bruto dos dados recebidos:", data.content);
 
-        // Filtrar os registros para garantir que o campo 'data' corresponda à data de hoje no formato DD/MM/YYYY
+        // Filtrar os registros para garantir que o campo 'dataVenda' corresponda à data de hoje no formato DD/MM/YYYY
         const filteredSales = data.content.filter((sale: any) => {
-          // O campo 'data' na resposta da API está no formato 'DD/MM/YYYY'
-          return sale.data === dateStrDDMMYYYY;
+          // O campo 'dataVenda' na resposta da API está no formato 'DD/MM/YYYY'
+          return sale.dataVenda === dateStrDDMMYYYY;
         });
 
         const total = filteredSales.reduce((sum: number, sale: any) => {
