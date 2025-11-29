@@ -22,13 +22,12 @@ export const DailySalesCard = () => {
       const dateStrYYYYMMDD = `${year}${month}${day}`; // Formato YYYYMMDD para a requisição da Edge Function
 
       console.log("DailySalesCard: Solicitando vendas para a data (YYYYMMDD):", dateStrYYYYMMDD);
-      console.log("DailySalesCard: Filtrando apenas a empresa com código 50 para teste.");
 
       const { data, error } = await supabase.functions.invoke("fetch-sales-data", {
         body: {
           dataInicial: dateStrYYYYMMDD,
           dataFinal: dateStrYYYYMMDD,
-          empresasOrigem: ["50"], // Alterado para filtrar a empresa de código 50
+          // empresasOrigem: ["50"], // Filtro por empresa removido
         }
       });
 
@@ -41,7 +40,7 @@ export const DailySalesCard = () => {
           return sum + (sale.valorProdutos || 0);
         }, 0);
         setTotalSales(total);
-        console.log("DailySalesCard: Total de vendas somadas (empresa 50):", total);
+        console.log("DailySalesCard: Total de vendas somadas:", total);
       } else {
         setTotalSales(0);
         console.log("DailySalesCard: Nenhum dado de vendas recebido ou conteúdo vazio.");
@@ -72,7 +71,7 @@ export const DailySalesCard = () => {
           <TrendingUp className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Vendas Hoje (Empresa 50)</p>
+          <p className="text-sm text-muted-foreground">Vendas Hoje</p>
           <p className="text-2xl font-bold text-foreground">
             {loading ? "..." : formatCurrency(totalSales)}
           </p>
