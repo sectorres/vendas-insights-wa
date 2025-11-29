@@ -37,7 +37,6 @@ serve(async (req) => {
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
     const credentials = btoa(`${username}:${password}`);
 
-    // Buscar todas as páginas de dados
     let allRecords: any[] = [];
     let currentPage = 1;
     const maxPages = 100; // Limite de segurança
@@ -46,12 +45,9 @@ serve(async (req) => {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
-        // Usar os campos dataVendaInicial e dataVendaFinal com o formato YYYY/MM/DD
+        // Usar APENAS dataVendaInicial e dataVendaFinal para filtrar pela data da venda
         dataVendaInicial: externalApiDataInicial,
         dataVendaFinal: externalApiDataFinal,
-        // Manter dataInicial e dataFinal também no formato YYYY/MM/DD, caso a API use eles como fallback
-        dataInicial: externalApiDataInicial,
-        dataFinal: externalApiDataFinal,
         incluirCanceladas: "NAO",
         mostraRentabilidade: "NAO",
         mostraQuestionario: "N"
@@ -61,7 +57,7 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Fetching page ${currentPage} with request body:`, JSON.stringify(requestBody, null, 2));
+      console.log(`Fetching page ${currentPage} with request body sent to external API:`, JSON.stringify(requestBody, null, 2));
 
       try {
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
@@ -74,7 +70,6 @@ serve(async (req) => {
         });
 
         if (!response.ok) {
-          // Se der erro na página > 1, assumimos que não há mais páginas
           if (currentPage > 1) {
             console.log(`No more pages after page ${currentPage - 1}`);
             break;
@@ -90,7 +85,6 @@ serve(async (req) => {
         
         console.log(`Page ${currentPage}: Fetched ${records.length} records`);
         
-        // Se não retornou nenhum registro, acabaram as páginas
         if (records.length === 0) {
           console.log('No more records found');
           break;
@@ -100,7 +94,6 @@ serve(async (req) => {
         currentPage++;
         
       } catch (error) {
-        // Se der erro em páginas posteriores, para mas mantém o que já coletou
         if (currentPage > 1) {
           console.log(`Error on page ${currentPage}, stopping. Error:`, error);
           break;
