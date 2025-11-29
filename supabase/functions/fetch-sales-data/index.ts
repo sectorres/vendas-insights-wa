@@ -85,11 +85,17 @@ serve(async (req) => {
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
     
-    if (!password) {
-      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is NOT set or is empty!');
+    if (password === undefined) {
+      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is UNDEFINED!');
+      throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
+    } else if (password === null) {
+      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is NULL!');
+      throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
+    } else if (password === '') {
+      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is EMPTY STRING!');
       throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
     }
-    console.log('[fetch-sales-data] TORRES_CABRAL_PASSWORD environment variable is successfully retrieved.');
+    console.log(`[fetch-sales-data] TORRES_CABRAL_PASSWORD environment variable is successfully retrieved. Length: ${password.length}`);
 
     const credentials = btoa(`${username}:${password}`);
     console.log(`[fetch-sales-data] Basic Auth credentials generated for user: ${username}. (Password masked)`);
