@@ -20,18 +20,12 @@ serve(async (req) => {
   try {
     const { dataInicial, dataFinal, empresasOrigem } = await req.json() as SalesDataRequest;
 
-    // Convert YYYYMMDD to YYYY/MM/DD for the external API
-    const formatToExternalApiDate = (dateStr: string) => {
-      const year = dateStr.substring(0, 4);
-      const month = dateStr.substring(4, 6);
-      const day = dateStr.substring(6, 8);
-      return `${year}/${month}/${day}`;
-    };
+    // A API externa espera YYYYMMDD para dataVendaInicial e dataVendaFinal
+    // Usamos dataInicial e dataFinal diretamente, pois já vêm no formato YYYYMMDD
+    const externalApiDataVendaInicial = dataInicial;
+    const externalApiDataVendaFinal = dataFinal;
 
-    const externalApiDataInicial = formatToExternalApiDate(dataInicial);
-    const externalApiDataFinal = formatToExternalApiDate(dataFinal);
-
-    console.log('Fetching sales data for external API:', { externalApiDataInicial, externalApiDataFinal, empresasOrigem });
+    console.log('Fetching sales data for external API:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
 
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
@@ -45,9 +39,8 @@ serve(async (req) => {
       const requestBody: any = {
         paginacao: currentPage,
         quantidade: 1000,
-        // Usar APENAS dataVendaInicial e dataVendaFinal para filtrar pela data da venda
-        dataVendaInicial: externalApiDataInicial,
-        dataVendaFinal: externalApiDataFinal,
+        dataVendaInicial: externalApiDataVendaInicial,
+        dataVendaFinal: externalApiDataVendaFinal,
         incluirCanceladas: "NAO",
         mostraRentabilidade: "NAO",
         mostraQuestionario: "N"

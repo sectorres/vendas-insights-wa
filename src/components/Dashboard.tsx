@@ -4,7 +4,7 @@ import { Bell, Smartphone } from "lucide-react";
 import { NotificationScheduleForm } from "./NotificationScheduleForm";
 import { NotificationScheduleList } from "./NotificationScheduleList";
 import { InsightsPreview } from "./InsightsPreview";
-import { DailySalesCard } from "./DailySalesCard";
+import { DailySalesByCompanyCards } from "./DailySalesByCompanyCards"; // Importar o novo componente
 import { ActiveNotificationsCard } from "./ActiveNotificationsCard";
 import { MonthlySentCard } from "./MonthlySentCard";
 import { Link } from "react-router-dom";
@@ -38,7 +38,7 @@ export const Dashboard = () => {
 
       <main className="container mx-auto px-6 py-8">
         <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <DailySalesCard />
+          <DailySalesByCompanyCards /> {/* Usar o novo componente aqui */}
           <ActiveNotificationsCard />
           <MonthlySentCard />
         </div>
