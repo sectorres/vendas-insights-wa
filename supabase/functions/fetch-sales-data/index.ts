@@ -61,7 +61,7 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Fetching page ${currentPage} with request body:`, requestBody);
+      console.log(`Fetching page ${currentPage} with request body:`, JSON.stringify(requestBody, null, 2));
 
       try {
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
@@ -85,6 +85,7 @@ serve(async (req) => {
         }
 
         const pageData = await response.json();
+        console.log(`Page ${currentPage}: Raw data received from external API:`, JSON.stringify(pageData, null, 2));
         const records = pageData.content || [];
         
         console.log(`Page ${currentPage}: Fetched ${records.length} records`);
