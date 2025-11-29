@@ -20,14 +20,14 @@ function getSaoPauloDateYYYYMMDD(): string {
   const month = String(saoPauloTime.getMonth() + 1).padStart(2, '0');
   const day = String(saoPauloTime.getDate()).padStart(2, '0');
   const formattedDate = `${year}${month}${day}`;
-  console.log(`getSaoPauloDateYYYYMMDD: Calculated São Paulo date: ${formattedDate}`);
+  console.log(`[getSaoPauloDateYYYYMMDD] Calculated São Paulo date: ${formattedDate}`);
   return formattedDate;
 }
 
 // Helper function to convert DD/MM/YYYY [HH:MM:SS] to YYYYMMDD
 function convertToYYYYMMDD(dateString: string): string {
   if (!dateString) {
-    console.warn(`convertToYYYYMMDD: Received empty or null dateString. Returning empty string.`);
+    console.warn(`[convertToYYYYMMDD] Received empty or null dateString. Returning empty string.`);
     return '';
   }
   const parts = dateString.split(' ')[0].split('/'); // Get DD/MM/YYYY and split
@@ -37,11 +37,11 @@ function convertToYYYYMMDD(dateString: string): string {
     const year = parseInt(parts[2], 10);
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
       const convertedDate = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`; // YYYYMMDD
-      console.log(`convertToYYYYMMDD: Converted "${dateString}" to "${convertedDate}"`);
+      console.log(`[convertToYYYYMMDD] Converted "${dateString}" to "${convertedDate}"`);
       return convertedDate;
     }
   }
-  console.warn(`convertToYYYYMMDD: Could not parse dateString "${dateString}" into DD/MM/YYYY format. Returning empty string.`);
+  console.warn(`[convertToYYYYMMDD] Could not parse dateString "${dateString}" into DD/MM/YYYY format. Returning empty string.`);
   return ''; // Invalid format
 }
 
@@ -52,10 +52,10 @@ function formatDateToYYYYSlashMMSlashDD(dateYYYYMMDD: string): string {
     const month = dateYYYYMMDD.substring(4, 6);
     const day = dateYYYYMMDD.substring(6, 8);
     const formattedDate = `${year}/${month}/${day}`;
-    console.log(`formatDateToYYYYSlashMMSlashDD: Converted "${dateYYYYMMDD}" to "${formattedDate}"`);
+    console.log(`[formatDateToYYYYSlashMMSlashDD] Converted "${dateYYYYMMDD}" to "${formattedDate}"`);
     return formattedDate;
   }
-  console.warn(`formatDateToYYYYSlashMMSlashDD: Invalid YYYYMMDD format "${dateYYYYMMDD}". Returning original string.`);
+  console.warn(`[formatDateToYYYYSlashMMSlashDD] Invalid YYYYMMDD format "${dateYYYYMMDD}". Returning original string.`);
   return dateYYYYMMDD;
 }
 
@@ -72,18 +72,25 @@ serve(async (req) => {
       const todaySaoPaulo = getSaoPauloDateYYYYMMDD();
       dataInicial = todaySaoPaulo;
       dataFinal = todaySaoPaulo;
-      console.log(`Defaulting to São Paulo date: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+      console.log(`[fetch-sales-data] Defaulting to São Paulo date: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
     } else {
-      console.log(`Edge Function received: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
+      console.log(`[fetch-sales-data] Edge Function received: dataInicial=${dataInicial}, dataFinal=${dataFinal}`);
     }
 
     const externalApiDataVendaInicial = formatDateToYYYYSlashMMSlashDD(dataInicial);
     const externalApiDataVendaFinal = formatDateToYYYYSlashMMSlashDD(dataFinal);
 
-    console.log('Fetching sales data for external API with formatted dates:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
+    console.log('[fetch-sales-data] Fetching sales data for external API with formatted dates:', { externalApiDataVendaInicial, externalApiDataVendaFinal, empresasOrigem });
 
     const username = 'MOISES';
     const password = Deno.env.get('TORRES_CABRAL_PASSWORD');
+    
+    if (!password) {
+      console.error('[fetch-sales-data] ERROR: TORRES_CABRAL_PASSWORD environment variable is not set!');
+      throw new Error('TORRES_CABRAL_PASSWORD environment variable is not set.');
+    }
+    console.log('[fetch-sales-data] Password environment variable is set.');
+
     const credentials = btoa(`${username}:${password}`);
 
     let allRecords: any[] = [];
@@ -105,9 +112,10 @@ serve(async (req) => {
         requestBody.empresasOrigem = empresasOrigem.map(codigo => parseInt(codigo, 10));
       }
 
-      console.log(`Page ${currentPage}: Request body to external API:`, JSON.stringify(requestBody, null, 2));
+      console.log(`[fetch-sales-data] Page ${currentPage}: Request body to external API:`, JSON.stringify(requestBody, null, 2));
 
       try {
+        console.log(`[fetch-sales-data] Page ${currentPage}: Making fetch request to external API...`);
         const response = await fetch('https://int.torrescabral.com.br/shx-integracao-servicos/notas', {
           method: 'POST',
           headers: {
@@ -116,12 +124,13 @@ serve(async (req) => {
           },
           body: JSON.stringify(requestBody)
         });
+        console.log(`[fetch-sales-data] Page ${currentPage}: Received response from external API. Status: ${response.status} ${response.statusText}`);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`Page ${currentPage}: API Error:`, response.status, errorText);
+          console.error(`[fetch-sales-data] Page ${currentPage}: API Error:`, response.status, errorText);
           if (currentPage > 1) { 
-            console.log(`Stopping pagination due to API error on page ${currentPage}.`);
+            console.log(`[fetch-sales-data] Stopping pagination due to API error on page ${currentPage}.`);
             break;
           }
           throw new Error(`API returned ${response.status}: ${errorText}`);
@@ -132,36 +141,37 @@ serve(async (req) => {
         const lastPage = pageData.lastPage || false;
         const totalRecordsFromApi = pageData.total || 0; 
 
-        console.log(`Page ${currentPage}: Raw records from external API: ${records.length}. Last page flag: ${lastPage}. API reported total: ${totalRecordsFromApi}`);
+        console.log(`[fetch-sales-data] Page ${currentPage}: Raw records from external API: ${records.length}. Last page flag: ${lastPage}. API reported total: ${totalRecordsFromApi}`);
         
         // Internal filtering by date
         const filteredRecords = records.filter((sale: any, index: number) => {
           const saleDateYYYYMMDD = convertToYYYYMMDD(sale.dataVenda);
           const isMatch = saleDateYYYYMMDD >= dataInicial && saleDateYYYYMMDD <= dataFinal;
           
-          console.log(`Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
+          console.log(`[fetch-sales-data] Page ${currentPage}, Record ${index}: rawDate="${sale.dataVenda}", convertedDate="${saleDateYYYYMMDD}", targetDates="${dataInicial}-${dataFinal}", isMatch=${isMatch}`);
           
           return isMatch;
         });
 
-        console.log(`Page ${currentPage}: ${filteredRecords.length} records after internal filtering.`);
+        console.log(`[fetch-sales-data] Page ${currentPage}: ${filteredRecords.length} records after internal filtering.`);
         
         allRecords = allRecords.concat(filteredRecords);
 
         if (lastPage || records.length === 0) { 
-          console.log(`Stopping pagination: lastPage is ${lastPage} or raw records.length is ${records.length}.`);
+          console.log(`[fetch-sales-data] Stopping pagination: lastPage is ${lastPage} or raw records.length is ${records.length}.`);
           break;
         }
         
         currentPage++;
         
       } catch (error) {
-        console.error(`Error during fetch for page ${currentPage}:`, error);
-        break;
+        console.error(`[fetch-sales-data] Error during fetch for page ${currentPage}:`, error);
+        // Re-throw to be caught by the outer try-catch and return 500
+        throw error; 
       }
     }
 
-    console.log(`Final result: Total records fetched and internally filtered: ${allRecords.length}`);
+    console.log(`[fetch-sales-data] Final result: Total records fetched and internally filtered: ${allRecords.length}`);
     
     const data = { content: allRecords };
 
@@ -169,7 +179,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in fetch-sales-data (top level):', error);
+    console.error('[fetch-sales-data] Error in top-level catch block:', error);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       {
